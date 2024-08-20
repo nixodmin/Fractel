@@ -1,6 +1,23 @@
 # Fractel
 Fractel
 
+Как сделать билд:
+
+Обязательно добавьте в окружение pyhon:
+
+pip install numpy
+
+pip install pygame
+
+pip install numpy
+
+
+разместите файл fractel.py в отдельную директорию
+
+скачайте медиа: https://disk.yandex.ru/d/liXV2gUiaxhO6A
+
+все медиафайлы поместите в директорию с файлом  fractel.py
+
 Версия 1.0.0
 
 -- Динамичный задний фон
@@ -45,3 +62,5 @@ ESC возврат в оконный режим
 TODO:
 
 -- новые игровые игровые механики
+
+
