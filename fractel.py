@@ -272,6 +272,7 @@ while running:
         if obstacle[0] + obstacle_max_size < 0:
             obstacles.remove(obstacle)
             score += 1
+            score_show = score
             # Каждые 10 очков даём жизнь
             if ((score-1) % 10) == 0:
                 new_life_sound.play()
@@ -404,7 +405,6 @@ while running:
     # Отображение текстовых сообщений при окончании игры
     if game_over:
         score_show = score
-        score = 1
         second_chance = 0
         obstacles.clear()
         pygame.mixer.music.stop()
@@ -420,7 +420,7 @@ while running:
             display_text("Game by Stanislav Nixman Developed 18-20 august 2024", game_over_text_y + 160)
 
         if winner == 1:
-            display_score(score_show)
+            display_score(500)
             display_timer(timer_minutes, timer_seconds)
             display_lives(lives)
             display_text("ПОЗДРАВЛЯЮ С ПОБЕДОЙ!", game_over_text_y)
