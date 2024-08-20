@@ -9,7 +9,7 @@ pip install numpy
 
 pip install pygame
 
-pip install numpy
+pip install matplotlib
 
 
 разместите файл fractel.py в отдельную директорию
