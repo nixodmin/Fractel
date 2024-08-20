@@ -154,8 +154,7 @@ def reset_game():
     score = 1
     lives = 3
     game_over = False
-    obstacle_frequency = 0
-    obstacle_counter = 0
+   
     
 # Функция проверки столкновения игрока с препятствием
 def check_collision(player_pos, obstacle_pos):
@@ -404,14 +403,16 @@ while running:
     
     # Отображение текстовых сообщений при окончании игры
     if game_over:
+        score_show = score
+        score = 1
+        second_chance = 0
+        obstacles.clear()
+        pygame.mixer.music.stop()
+        obstacle_img = obstacle_img_def
         if winner == 0:
-            display_score(score)
+            display_score(score_show)
             display_timer(timer_minutes, timer_seconds)
             display_lives(lives)
-            obstacles.clear()
-            # проиграть проигрыш?
-            pygame.mixer.music.stop()
-            obstacle_img = obstacle_img_def
             display_text("Вы проиграли :(", game_over_text_y)
             display_text("Нажмите Enter, чтобы начать заново", game_over_text_y + 40)
             display_text("Space - прыжок. LCTRL - отключение ранца", game_over_text_y + 80)
@@ -419,13 +420,9 @@ while running:
             display_text("Game by Stanislav Nixman Developed 18-20 august 2024", game_over_text_y + 160)
 
         if winner == 1:
-            display_score(score)
+            display_score(score_show)
             display_timer(timer_minutes, timer_seconds)
             display_lives(lives)
-            obstacles.clear()
-            # проиграть победную?
-            pygame.mixer.music.stop()
-            obstacle_img = obstacle_img_def
             display_text("ПОЗДРАВЛЯЮ С ПОБЕДОЙ!", game_over_text_y)
             display_text("Нажмите Enter, чтобы начать заново", game_over_text_y + 40)
             display_text("Space - прыжок. LCTRL - отключение ранца", game_over_text_y + 80)
@@ -439,6 +436,8 @@ while running:
     # Обработка ввода клавиатуры для перезапуска игры
     keys = pygame.key.get_pressed()
     if game_over and keys[pygame.K_RETURN]:
+        score = 1
+        second_chance = 0
         timer_counter = 0
         timer_minutes = 0
         timer_seconds = 0
