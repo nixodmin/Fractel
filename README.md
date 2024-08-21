@@ -1,5 +1,29 @@
 # Fractel
-Fractel
+
+RU:
+
+Это простая игра-скроллер, где главная задача у игрока набрать счёт равный 450 очков.
+Навстречу игроку летят энергошары, очко даётся за достижение энергошара левого края экрана.
+Каждые 10 энергошаров, которые засчитались как очки, дают игроку плюс одну энергию (жизнь).
+Если игрок столкнётся с энергошаром, то потеряет одну энергию(жизнь). В начале игры вам даётся 3 энергии.
+Игрок, нажимая SPACE, может активировать реактивный ранец и подпрыгивать в воздухе.
+При столкновении с верхней границей экрана ранец отключается, игрок падает вниз с большой скоростью.
+Нажатие LEFT CONTROL позволяет отключать ранец и падать быстре в произвольный момент.
+
+Управление:
+
+SPACE - активация реактивного ранца (прыжок)
+
+LCTRL - отключить реактивный ранец (быстрое падение)
+
+Дополнительно:
+
+TAB - переход в FullScreen
+
+ESC - возврат в оконный режим
+
+P - пауза
+
 
 Как сделать свой билд:
 
@@ -12,61 +36,56 @@ pip install pygame
 pip install matplotlib
 
 
-разместите файл fractel.py в отдельную директорию
+Разместите файл fractel.py в отдельную директорию
 
-возьмите медиафайлы из релиза https://github.com/nixodmin/Fractel/releases
+Возьмите медиафайлы из релиза https://github.com/nixodmin/Fractel/releases
 
 или скачайте медиафайлы здесь: https://disk.yandex.ru/d/liXV2gUiaxhO6A
 
-все медиафайлы поместите в директорию с файлом  fractel.py
+Все медиафайлы поместите в директорию с файлом  fractel.py
 
-Версия 1.0.0
+---------------------------------------
 
--- Динамичный задний фон
+EN:
 
--- Музыка на заднем фоне
+This is a simple scrolling game, where the main task of the player is to score 450 points.
+Energy balls fly towards the player, a point is given for reaching the energy ball on the left edge of the screen.
+Every 10 energy balls that are counted as points give the player plus one energy (life).
+If the player collides with an energy ball, he will lose one energy (life). At the beginning of the game, you are given 3 energies.
+The player, by pressing SPACE, can activate the jetpack and jump in the air.
+When colliding with the upper edge of the screen, the jetpack turns off, the player falls down at high speed.
+Pressing LEFT CONTROL allows you to turn off the jetpack and fall faster at any time.
 
--- Нейтральные частицы
+Controls:
 
--- Стартовая энергия равна 3
+SPACE - activate jetpack (jump)
 
--- Стартовый счёт (очки) равне нулю
+LCTRL - disable jetpack (fast fall)
 
--- Когда энергошар уходит за левую границу экрана, счёт пополняется на одно очко
+Additional:
 
--- При столкновении с энергошарами игрока подбрасывает и он получает минус одну единицу энергии
+TAB - switch to FullScreen
 
--- Ноль энергии - конец игры
+ESC - return to windowed mode
 
--- Одна единица энергия даётся за каждые 10 очков счёта.
+P - pause
 
--- При достижении игроком верхней границы экрана он теряет импульс инерции и медленно падает вниз (отключение реактивного ранца)
+How to make your own build:
 
--- Игровые этапы (50, 100, 200, 300), на каждом этапе идёт смена спрайта для энергошаров, цветов для частиц, меньше затемнение фона, снижается интенсивность появления энергошаров
+Be sure to add to the pyhon environment:
 
--- Анимация спрайтов (передвижение ногами, прыжки, падение, столкновение)
+pip install numpy
 
--- Анимацию столкновения с энергошарами
+pip install pygame
 
--- Финальный игровой этап 450 очков
+pip install matplotlib
 
--- Левый контрол отключает реактивный ранец
+Place the fractel.py file in a separate directory
 
-Управление:
+Take media files from the release https://github.com/nixodmin/Fractel/releases
 
-SPACE - активация реактивного ранца (прыжок)
+or download media files here: https://disk.yandex.ru/d/liXV2gUiaxhO6A
 
-LCTRL - отключить реактивный ранец (быстрое падение)
-
-Дополнительно:
-
-TAB переход в FullScreen
-
-ESC возврат в оконный режим
-
-
-Дальнейшие планы:
-
--- новые игровые игровые механики
+Place all media files in the directory with the fractel.py file
 
 
