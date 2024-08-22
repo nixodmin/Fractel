@@ -17,6 +17,7 @@ collision_sound = pygame.mixer.Sound("collision.mp3")
 rocket_jump_sound = pygame.mixer.Sound("rocket_jump.mp3")
 new_stage_sound = pygame.mixer.Sound("new_stage.mp3")
 new_life_sound = pygame.mixer.Sound("new_life.mp3")
+new_score_sound = pygame.mixer.Sound("new_score.mp3")
 
 #Проверка выиграл или проиграл
 winner = 0
@@ -25,10 +26,11 @@ winner = 0
 width = 800
 height = 600
 screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("FRACTEL v1.0.1")
+pygame.display.set_caption("FRACTEL v1.0.2")
 
 # Определение коротких имён для цветов
 WHITE = (255, 255, 255)
+RED = (255, 0, 0)
 
 # Создаем списки для хранения координат и скоростей частиц
 particles = []
@@ -45,6 +47,12 @@ cparticle_count = 20
 cmax_distance = 50
 cparticle_sizes = [1, 2, 3]
 
+# Параметры частиц, возникающих от столкновения энергошаров с границей экрана
+ocparticles = []
+ocparticle_count = 10
+ocmax_distance = 100
+ocparticle_sizes = [1, 2]
+
 # Генерируем случайные частицы и их скорости
 for _ in range(100):
     x = random.randint(0, width)
@@ -53,11 +61,9 @@ for _ in range(100):
     speed = random.randint(1, 5)
     speeds.append(speed)
 
-
-# Загрузка заднего фона
+# Загрузка элементов заднего фона
 back_img = pygame.image.load("back.png").convert_alpha()
 back_img = pygame.transform.scale(back_img, (width, height))
-
 const_img = pygame.image.load("const.png").convert_alpha()
 const_img = pygame.transform.scale(const_img, (width, height))
 
@@ -96,12 +102,35 @@ tiles_per_col = ground_height // tile_size + 1
 ground_tiles = []
 
 # Загрузка изображений
+count_col = 0
+
+
 for row in range(tiles_per_col):
+    count_col += 1
     for col in range(tiles_per_row):
-        ground_tile = pygame.image.load("solid.png")
+        row_var = random.randint(1, 2)
+        if (count_col == 1):
+            if (row_var == 1):
+                ground_tile = pygame.image.load("solid_4.png").convert_alpha()
+            if (row_var == 2):
+                ground_tile = pygame.image.load("solid_2.png").convert_alpha()
+                
+        if (count_col == 2):
+            if (row_var == 1):
+                ground_tile = pygame.image.load("solid_3.png").convert_alpha()
+            if (row_var == 2):
+                ground_tile = pygame.image.load("solid.png").convert_alpha()
+
+        if (row_var != 1):
+            row_var = random.randint(1, 2)
+        
         ground_tile = pygame.transform.scale(ground_tile, (tile_size, tile_size))
         ground_tiles.append((ground_tile, (col * tile_size, height - (row + 1) * tile_size)))
 
+    if (count_col > 1):
+        count_col = 1
+
+# Скины для энергошаров
 obstacle_img_def = pygame.image.load("obst.png").convert_alpha()
 obstacle_img_def = pygame.transform.scale(obstacle_img_def, (obstacle_max_size, obstacle_max_size))
 obstacle_img_g = pygame.image.load("obst_green.png").convert_alpha()
@@ -146,7 +175,10 @@ def draw_text(surface, text, size, x, y):
     font = pygame.font.Font(None, size)
     text_surface = font.render(text, True, WHITE)
     surface.blit(text_surface, (x, y))
-
+def draw_text_pause(surface, text, size, x, y):
+    font = pygame.font.Font(None, size)
+    text_surface = font.render(text, True, RED)
+    surface.blit(text_surface, (x, y))
 
 # Функции для отображения счета, жизней и текстовых сообщений
 def display_score(score):
@@ -163,9 +195,12 @@ def display_text(text, y):
 
 # Функция сброса игры
 def reset_game():
-    global player_pos, is_jumping, jump_velocity, obstacle_pos, score, lives, game_over
+    global player_pos, is_jumping, is_moving_left, is_moving_right, move_velocity, jump_velocity, obstacle_pos, score, lives, game_over
     player_pos = [width / 2, height - player_size - ground_height]
     is_jumping = False
+    is_moving_left = True
+    is_moving_right = False
+    move_velocity = 2
     jump_velocity = 10
     obstacle_pos[0] = width
     score = 1
@@ -192,6 +227,9 @@ def check_collision(player_pos, obstacle_pos):
 
 running = True
 is_jumping = False
+move_velocity = 2
+is_moving_left = True
+is_moving_right = False
 clock = pygame.time.Clock()
 game_over = False
 game_over_text_y = height // 2 - 120
@@ -233,7 +271,26 @@ class cParticle:
     def draw(self, surface):
         if self.distance <= cmax_distance:
             pygame.draw.circle(surface, (7, 255, 212), (int(self.x), int(self.y)), self.size)
+
+# Класс для частиц столкновения с левой границей экрана
+class ocParticle:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.size = random.choice(ocparticle_sizes)
+        self.angle = random.uniform(0, 2 * math.pi)
+        self.speed = random.uniform(1, 3)
+        self.distance = 0
     
+    def move(self):
+        self.distance += self.speed
+        self.x += self.speed * math.cos(self.angle)
+        self.y += self.speed * math.sin(self.angle)
+    
+    def draw(self, surface):
+        if self.distance <= ocmax_distance:
+            pygame.draw.circle(surface, (255, 255, 255), (int(self.x), int(self.y)), self.size)
+
 # Главный игровой цикл
 while running:
     for event in pygame.event.get():
@@ -257,9 +314,27 @@ while running:
             if event.key == pygame.K_TAB:
                 screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
             if event.key == pygame.K_LCTRL:
-                player_state = 2
-                is_jumping = False
+                if not game_over:
+                    player_state = 2
+                    is_jumping = False
+            if event.key == pygame.K_LEFT:
+                if not game_over:
+                    is_moving_right = False
+                    is_moving_left = True
+                    move_velocity = 2
+            if event.key == pygame.K_RIGHT:
+                if not game_over:
+                    is_moving_left = False
+                    is_moving_right = True
+                    move_velocity = 2
     if not paused:        
+        
+        if is_moving_left:
+            player_pos[0] -= move_velocity
+                
+        if is_moving_right:
+            player_pos[0] += move_velocity
+        
         if is_jumping:
             player_pos[1] -= jump_velocity
             jump_velocity -= gravity
@@ -280,8 +355,15 @@ while running:
                 timer_counter -= 1
 
         # Ограничение игрока относительно земли
-        if player_pos[1] > height - player_size - ground_height:
+        if player_pos[1] > height - player_size - (ground_height):
             player_pos[1] = height - player_size - (ground_height + 2)
+            player_state = 0
+
+        if player_pos[0] < 0:
+            player_pos[0] = 0
+            player_state = 0
+        if player_pos[0] > width - player_size:
+            player_pos[0] = width - player_size
             player_state = 0
 
         # Проверка, чтобы игрок не мог прыгнуть выше верхней границы экрана
@@ -308,9 +390,12 @@ while running:
 
         # Обновление позиций препятствий и удаление вышедших за границу экрана
         for obstacle in obstacles:
+            prev_ob = obstacle[1]
             obstacle[0] -= (obstacle_speed - 1)
 
             if obstacle[0] + obstacle_max_size < 0:
+                ocparticles = [ocParticle(obstacle_pos[0] - width, prev_ob) for _ in range(ocparticle_count)]
+                new_score_sound.play()
                 obstacles.remove(obstacle)
                 score += 1
                 score_show = score
@@ -447,6 +532,8 @@ while running:
     
         # Отображение текстовых сообщений при окончании игры
         if game_over:
+            is_moving_right = False
+            is_moving_left = False
             score_show = score
             second_chance = 0
             obstacles.clear()
@@ -456,31 +543,36 @@ while running:
                 display_score(score_show)
                 display_timer(timer_minutes, timer_seconds)
                 display_lives(lives)
-                font = pygame.font.Font(None, 26)
                 display_text("Вы проиграли :(", game_over_text_y)
                 display_text("Нажмите Enter, чтобы начать заново", game_over_text_y + 30)
-                display_text("Space - прыжок(jump). LCTRL - падение (fall), P - пауза (pause)", game_over_text_y + 80)
-                display_text("TAB - полноэкранный режим (fullscreen). ESC - оконный режим (windowed)", game_over_text_y + 120)
-                display_text("Fractel v1.0.1", game_over_text_y + 190)
+                font = pygame.font.Font(None, 26)
+                display_text("Fractel v1.0.2", game_over_text_y + 190)
                 display_text("game by Stanislav Nixman", game_over_text_y + 220)
-
                 font = pygame.font.Font(None, 36)
             if winner == 1:                
-                display_score(500)
+                display_score(score_show)
                 display_timer(timer_minutes, timer_seconds)
                 display_lives(lives)
-                font = pygame.font.Font(None, 26)
                 display_text("ПОЗДРАВЛЯЮ С ПОБЕДОЙ!", game_over_text_y)
                 display_text("Нажмите Enter, чтобы начать заново", game_over_text_y + 30)
-                display_text("Space - прыжок(jump). LCTRL - падение (fall), P - пауза (pause)", game_over_text_y + 80)
-                display_text("TAB - полноэкранный режим (fullscreen). ESC - оконный режим (windowed)", game_over_text_y + 120)
-                display_text("Fractel v1.0.1", game_over_text_y + 190)
+                font = pygame.font.Font(None, 26)
+                display_text("Fractel v1.0.2", game_over_text_y + 190)
                 display_text("game by Stanislav Nixman", game_over_text_y + 220)
                 font = pygame.font.Font(None, 36)
         else:
             display_score(score)
             display_lives(lives)
-    
+
+        if (timer_minutes == 00 and timer_seconds > 1 and timer_seconds < 10):
+            font = pygame.font.Font(None, 36)
+            display_text("Чтобы пройти игру, вам нужно 450 очков", game_over_text_y)
+            font = pygame.font.Font(None, 26)
+            display_text("Управление (Controls):", game_over_text_y + 40)
+            display_text("Space - прыжок(jump). LCTRL - падение (fall)", game_over_text_y + 70)
+            display_text("Влево-Вправо (Left-Right), P - пауза (pause)", game_over_text_y + 90)
+            display_text("TAB - полноэкранный режим (fullscreen).", game_over_text_y + 110)
+            display_text("ESC - оконный режим (windowed)", game_over_text_y + 130)
+            font = pygame.font.Font(None, 36)
         # Обработка ввода клавиатуры для перезапуска игры
         keys = pygame.key.get_pressed()
         if game_over and keys[pygame.K_RETURN]:
@@ -517,11 +609,13 @@ while running:
         for cparticle in cparticles:
             cparticle.move()
             cparticle.draw(screen)
-        
+        for ocparticle in ocparticles:
+            ocparticle.move()
+            ocparticle.draw(screen)       
         pass
     
-    if paused:        
-        draw_text(screen, "Пауза", 50, width // 2 - 60, height // 2 - 25)
+    if paused:              
+        draw_text_pause(screen, "Пауза (Pause)", 50, width // 2 - 100, height // 2 - 200)
     
     # Обновление дисплея
     pygame.display.flip()
