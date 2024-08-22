@@ -12,6 +12,8 @@ RU:
 
 Управление:
 
+Курсор LEFT/RIGHT - движение вправо-влево
+
 SPACE - активация реактивного ранца (прыжок)
 
 LCTRL - отключить реактивный ранец (быстрое падение)
@@ -57,6 +59,8 @@ When colliding with the upper edge of the screen, the jetpack turns off, the pla
 Pressing LEFT CONTROL allows you to turn off the jetpack and fall faster at any time.
 
 Controls:
+
+LEFT/RIGHT - left and right moves
 
 SPACE - activate jetpack (jump)
 
