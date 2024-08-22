@@ -5,19 +5,23 @@ import random
 import time
 import math
 
+version = "1.0.3"
+
 pygame.init()
 pygame.mixer.init()
 
 # Загрузка звуковых файлов
-pygame.mixer.music.load("background_music.mp3")
+pygame.mixer.music.load("background_music_1.mp3")
 pygame.mixer.music.play(-1)
-pygame.mixer.music.set_volume(0.7) 
+pygame.mixer.music.set_volume(0.7)
 
 collision_sound = pygame.mixer.Sound("collision.mp3")
 rocket_jump_sound = pygame.mixer.Sound("rocket_jump.mp3")
 new_stage_sound = pygame.mixer.Sound("new_stage.mp3")
 new_life_sound = pygame.mixer.Sound("new_life.mp3")
 new_score_sound = pygame.mixer.Sound("new_score.mp3")
+laser_sound = pygame.mixer.Sound("laser.mp3")
+laser_empty = pygame.mixer.Sound("laser_empty.mp3")
 
 #Проверка выиграл или проиграл
 winner = 0
@@ -26,7 +30,7 @@ winner = 0
 width = 800
 height = 600
 screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("FRACTEL v1.0.2")
+pygame.display.set_caption("FRACTEL " + version)
 
 # Определение коротких имён для цветов
 WHITE = (255, 255, 255)
@@ -61,11 +65,22 @@ for _ in range(100):
     speed = random.randint(1, 5)
     speeds.append(speed)
 
-# Загрузка элементов заднего фона
-back_img = pygame.image.load("back.png").convert_alpha()
-back_img = pygame.transform.scale(back_img, (width, height))
-const_img = pygame.image.load("const.png").convert_alpha()
-const_img = pygame.transform.scale(const_img, (width, height))
+
+# Стадия игры
+stage = 1
+
+if (stage == 1):
+    back_img = pygame.image.load("back_1.png").convert_alpha()
+    back_img = pygame.transform.scale(back_img, (width, height))
+    const_img = pygame.image.load("const_1.png").convert_alpha()
+    const_img = pygame.transform.scale(const_img, (width, height))
+if (stage == 2):
+    back_img = pygame.image.load("back_2.png").convert_alpha()
+    back_img = pygame.transform.scale(back_img, (width, height))
+    const_img = pygame.image.load("const_2.png").convert_alpha()
+    const_img = pygame.transform.scale(const_img, (width, height))
+
+
 
 # Создание массива значений цвета для затемнения
 data = pygame.surfarray.pixels3d(const_img)
@@ -93,7 +108,8 @@ scrolling_speed = 2
 obstacle_speed = random.randint(4, 6)
 score = 1
 lives = 3
-second_chance=0
+second_chance = 0
+bomb_ready = 0
 
 # Параметры фоновых блоков
 tile_size = 32
@@ -101,10 +117,8 @@ tiles_per_row = width // tile_size + 1
 tiles_per_col = ground_height // tile_size + 1
 ground_tiles = []
 
-# Загрузка изображений
+# Загрузка изображений, формирующих полотно дороги
 count_col = 0
-
-
 for row in range(tiles_per_col):
     count_col += 1
     for col in range(tiles_per_row):
@@ -141,13 +155,17 @@ obstacle_img_r = pygame.image.load("obst_red.png").convert_alpha()
 obstacle_img_r = pygame.transform.scale(obstacle_img_r, (obstacle_max_size, obstacle_max_size))
 obstacle_img_f = pygame.image.load("obst_final.png").convert_alpha()
 obstacle_img_f = pygame.transform.scale(obstacle_img_f, (obstacle_max_size, obstacle_max_size))
+obstacle_img_ex = pygame.image.load("obst_explosed.png").convert_alpha()
+obstacle_img_ex = pygame.transform.scale(obstacle_img_ex, (obstacle_max_size, obstacle_max_size))
+obstacle_img_ex_2 = pygame.image.load("obst_explosed_2.png").convert_alpha()
+obstacle_img_ex_2 = pygame.transform.scale(obstacle_img_ex_2, (obstacle_max_size, obstacle_max_size))
+
+
 obstacle_img = obstacle_img_def
 
 
 # Загрузка изображений игрока
 player_images = ['Player_stand_1.png', 'Player_stand_2.png', 'Player_jump_1.png', 'Player_jump_2.png', 'Player_1.png', 'Player_2.png']
-
-# Загрузка изображений игрока
 player_imgs = []
 for img_name in player_images:
     player_img = pygame.image.load(img_name).convert_alpha()
@@ -156,25 +174,30 @@ for img_name in player_images:
 current_img_index = 0
 # Таймер для смены изображений
 tiktak = 0
+
 # Статусы игрока 0 - норма, 1 - прыжок, 2 - отключение ранца
 player_state = 0
+
+# Статусы игрока 0 - норма, 1 - уничтожено игроком
+obstacle_state = 0
+
 
 # Загрузка изображения столкновения
 eximage_path = "expl.png"
 eximage = pygame.image.load(eximage_path)
 
-
 # Шрифт для отображения счета и жизней
 font = pygame.font.Font(None, 36)
-
 
 # Переменная состояния паузы
 paused = False
 
+# Отображение текста
 def draw_text(surface, text, size, x, y):
     font = pygame.font.Font(None, size)
     text_surface = font.render(text, True, WHITE)
     surface.blit(text_surface, (x, y))
+
 def draw_text_pause(surface, text, size, x, y):
     font = pygame.font.Font(None, size)
     text_surface = font.render(text, True, RED)
@@ -194,8 +217,8 @@ def display_text(text, y):
     screen.blit(text_render, (width // 2 - text_render.get_width() // 2, y))
 
 # Функция сброса игры
-def reset_game():
-    global player_pos, is_jumping, is_moving_left, is_moving_right, move_velocity, jump_velocity, obstacle_pos, score, lives, game_over
+def reset_game(new_stage, is_winner):
+    global player_pos, is_jumping, is_moving_left, is_moving_right, move_velocity, jump_velocity, obstacle_pos, score, lives, game_over, const_img, back_img, darkened_data, darkened_img, data, stage, winner, bomb_ready
     player_pos = [width / 2, height - player_size - ground_height]
     is_jumping = False
     is_moving_left = True
@@ -206,6 +229,36 @@ def reset_game():
     score = 1
     lives = 3
     game_over = False
+    bomb_ready = 0
+
+    # Сброс заднего фона
+    if (is_winner == 1):
+        if (new_stage == 1):
+            next_stage = 1
+            stage = 1
+        if (new_stage == 2):
+            next_stage = 2
+            stage = 2
+    else:
+            next_stage = 1
+            stage = 1
+
+    pygame.mixer.music.load("background_music_"+str(next_stage)+".mp3")
+    pygame.mixer.music.play(-1)
+    pygame.mixer.music.set_volume(0.7)
+    back_img = pygame.image.load("back_"+str(next_stage)+".png").convert_alpha()
+    back_img = pygame.transform.scale(back_img, (width, height))
+    const_img = pygame.image.load("const_"+str(next_stage)+".png").convert_alpha()
+    const_img = pygame.transform.scale(const_img, (width, height))
+    data = pygame.surfarray.pixels3d(const_img)
+    darkened_data = (data * 0.4)
+    darkened_img = make_surface(darkened_data)
+    screen.blit(darkened_img, (0, 0))
+    winner = 0
+    
+    #pygame.display.update()
+
+#change_back(str(stage))
    
     
 # Функция проверки столкновения игрока с препятствием
@@ -313,6 +366,21 @@ while running:
                 screen = pygame.display.set_mode((width, height))
             if event.key == pygame.K_TAB:
                 screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
+
+            if event.key == pygame.K_LALT:
+                if not game_over:
+                    if lives > 10:
+                        lives = lives - 10
+                        #звук подрыва энергошаров
+                        laser_sound.play()
+                        obstacle_state = 1
+                        bomb_ready=0
+                    else:
+                        #звук что оружие не заряжено
+                        laser_empty.play()
+                        bomb_ready=0
+                            
+
             if event.key == pygame.K_LCTRL:
                 if not game_over:
                     player_state = 2
@@ -366,6 +434,9 @@ while running:
             player_pos[0] = width - player_size
             player_state = 0
 
+        if lives > 10:
+            bomb_ready = 1
+
         # Проверка, чтобы игрок не мог прыгнуть выше верхней границы экрана
         if player_pos[1] < 1:
             player_state = 2
@@ -409,26 +480,29 @@ while running:
                     darkened_img = make_surface(darkened_data)
                     new_stage_sound.play()
                     obstacle_img = obstacle_img_g
+                    obstacle_img_prev = obstacle_img_g
                     second_chance = 48
                     p_pr = 19
                     p_pg = 186
                     p_pb = 0
                 # На 100 очках сброс интенсивности и замена спрайта
                 if (score == 100):
-                    darkened_data = (data * 0.8)
+                    darkened_data = (data * 0.7)
                     darkened_img = make_surface(darkened_data)
                     new_stage_sound.play()
                     obstacle_img = obstacle_img_y
+                    obstacle_img_prev = obstacle_img_y
                     second_chance = 98
                     p_pr = 219
                     p_pg = 200
                     p_pb = 0
                 # На 200 очках сброс интенсивности и замена спрайта
                 if (score == 200):
-                    darkened_data = (data * 0.9)
+                    darkened_data = (data * 0.8)
                     darkened_img = make_surface(darkened_data)
                     new_stage_sound.play()
                     obstacle_img = obstacle_img_r
+                    obstacle_img_prev = obstacle_img_r
                     second_chance = 198
                     p_pr = 218
                     p_pg = 17
@@ -439,6 +513,7 @@ while running:
                     darkened_img = make_surface(darkened_data)
                     new_stage_sound.play()
                     obstacle_img = obstacle_img_f
+                    obstacle_img_prev = obstacle_img_f
                     second_chance = 298
                     p_pr = 221
                     p_pg = 221
@@ -498,6 +573,17 @@ while running:
         tiktak += 1
         if tiktak > 30:
             tiktak = 0
+        
+        if bomb_ready == 1:
+            screen.blit(obstacle_img_ex, (10, 40))
+
+        if obstacle_state == 1:
+            obstacle_img = obstacle_img_ex_2
+            if tiktak == 20:
+                obstacles.clear()
+                obstacle_img = obstacle_img_prev
+                obstacle_state = 0
+
 
         if tiktak == 10 or tiktak == 20 or tiktak == 30:
             # Анимация бега
@@ -539,40 +625,63 @@ while running:
             obstacles.clear()
             pygame.mixer.music.stop()
             obstacle_img = obstacle_img_def
-            if winner == 0:                
+            if winner == 0:
+                new_stage = 1                
                 display_score(score_show)
                 display_timer(timer_minutes, timer_seconds)
                 display_lives(lives)
-                display_text("Вы проиграли :(", game_over_text_y)
-                display_text("Нажмите Enter, чтобы начать заново", game_over_text_y + 30)
+                display_text("Вы проиграли. You lost :(", game_over_text_y)
+                display_text("Enter - начать заново. Enter for restart.", game_over_text_y + 30)
                 font = pygame.font.Font(None, 26)
-                display_text("Fractel v1.0.2", game_over_text_y + 190)
+                display_text("Fractel " + version, game_over_text_y + 190)
                 display_text("game by Stanislav Nixman", game_over_text_y + 220)
                 font = pygame.font.Font(None, 36)
-            if winner == 1:                
-                display_score(score_show)
-                display_timer(timer_minutes, timer_seconds)
-                display_lives(lives)
-                display_text("ПОЗДРАВЛЯЮ С ПОБЕДОЙ!", game_over_text_y)
-                display_text("Нажмите Enter, чтобы начать заново", game_over_text_y + 30)
-                font = pygame.font.Font(None, 26)
-                display_text("Fractel v1.0.2", game_over_text_y + 190)
-                display_text("game by Stanislav Nixman", game_over_text_y + 220)
-                font = pygame.font.Font(None, 36)
+                is_winner = 0
+            
+            if winner == 1:
+                # Смена уровней
+                if (stage == 1):
+                    new_stage = 2
+                    display_score(score_show)
+                    display_timer(timer_minutes, timer_seconds)
+                    display_lives(lives)
+                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
+                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 30)
+                    font = pygame.font.Font(None, 26)
+                    display_text("Fractel " + version, game_over_text_y + 190)
+                    display_text("game by Stanislav Nixman", game_over_text_y + 220)
+                    font = pygame.font.Font(None, 36)
+                    is_winner = 1
+
+                if (stage == 2):
+                    new_stage = 1
+                    display_score(score_show)
+                    display_timer(timer_minutes, timer_seconds)
+                    display_lives(lives)
+                    display_text("Вы прошли игру! You win!", game_over_text_y)
+                    display_text("Enter - перезапуск. Enter for restart. ", game_over_text_y + 30)
+                    font = pygame.font.Font(None, 26)
+                    display_text("Fractel " + version, game_over_text_y + 190)
+                    display_text("game by Stanislav Nixman", game_over_text_y + 220)
+                    font = pygame.font.Font(None, 36)
+                    is_winner = 1
+
         else:
             display_score(score)
             display_lives(lives)
 
         if (timer_minutes == 00 and timer_seconds > 1 and timer_seconds < 10):
             font = pygame.font.Font(None, 36)
-            display_text("Чтобы пройти игру, вам нужно 450 очков", game_over_text_y)
+            display_text("Наберите 450 очков! Score 450 points!", game_over_text_y)
             font = pygame.font.Font(None, 26)
             display_text("Управление (Controls):", game_over_text_y + 40)
             display_text("Space - прыжок(jump). LCTRL - падение (fall)", game_over_text_y + 70)
             display_text("Влево-Вправо (Left-Right), P - пауза (pause)", game_over_text_y + 90)
-            display_text("TAB - полноэкранный режим (fullscreen).", game_over_text_y + 110)
-            display_text("ESC - оконный режим (windowed)", game_over_text_y + 130)
+            display_text("LALT - подрыв (explose).", game_over_text_y + 110)
+            display_text("TAB - полноэкранный режим (fullscreen).", game_over_text_y + 130)
+            display_text("ESC - оконный режим (windowed)", game_over_text_y + 150)
             font = pygame.font.Font(None, 36)
+        
         # Обработка ввода клавиатуры для перезапуска игры
         keys = pygame.key.get_pressed()
         if game_over and keys[pygame.K_RETURN]:
@@ -581,13 +690,10 @@ while running:
             timer_counter = 0
             timer_minutes = 0
             timer_seconds = 0
-            pygame.mixer.music.play(-1)
-            darkened_data = (data * 0.4)
-            darkened_img = make_surface(darkened_data)
             p_pr = 7
             p_pg = 121
             p_pb = 212
-            reset_game()
+            reset_game(new_stage, is_winner)
 
         # Отображение таймера
         display_timer(timer_minutes, timer_seconds)
