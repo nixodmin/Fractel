@@ -42,9 +42,7 @@ pip install matplotlib
 
 Возьмите медиафайлы из релиза https://github.com/nixodmin/Fractel/releases
 
-или скачайте медиафайлы здесь: https://disk.yandex.ru/d/liXV2gUiaxhO6A
-
-Все медиафайлы поместите в директорию с файлом  fractel.py
+Директорию с медиафайлами поместите в директорию с файлом  fractel.py
 
 ---------------------------------------
 
@@ -88,8 +86,6 @@ Place the fractel.py file in a separate directory
 
 Take media files from the release https://github.com/nixodmin/Fractel/releases
 
-or download media files here: https://disk.yandex.ru/d/liXV2gUiaxhO6A
-
-Place all media files in the directory with the fractel.py file
+Place directory with media files in the directory with the fractel.py file
 
 
