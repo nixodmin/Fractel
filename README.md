@@ -13,14 +13,19 @@ RU:
 Управление:
 
 Курсор LEFT/RIGHT - движение вправо-влево
+
 Курсор UP/DOWN - взлёт-падение
 
 SPACE - выстрел (три выстрела за 1 энергию)
+
 LALT - подрыв всех энергошаров на экране за 10 энергии
 
 Дополнительно:
+
 TAB - переход в FullScreen
+
 ESC - возврат в оконный режим
+
 P - пауза
 
 
@@ -56,10 +61,21 @@ Pressing LEFT CONTROL allows you to turn off the jetpack and fall faster at any 
 Controls:
 
 Курсор LEFT/RIGHT - left-right
+
 Курсор UP/DOWN - jump-fall
 
 SPACE - shot (3 shots for 1 energy)
+
 LALT - destroys all energy ball on screen for 10 energy
+
+Дополнительно:
+
+TAB - FullScreen
+
+ESC - return to widowed mode
+
+P - pause
+
 
 How to make your own build:
 
