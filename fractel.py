@@ -5,23 +5,24 @@ import random
 import time
 import math
 
-version = "1.0.3"
+version = "1.0.4"
 
 pygame.init()
 pygame.mixer.init()
 
 # Загрузка звуковых файлов
-pygame.mixer.music.load("background_music_1.mp3")
+pygame.mixer.music.load("media/mp3/music/background_music_1.mp3")
 pygame.mixer.music.play(-1)
 pygame.mixer.music.set_volume(0.7)
 
-collision_sound = pygame.mixer.Sound("collision.mp3")
-rocket_jump_sound = pygame.mixer.Sound("rocket_jump.mp3")
-new_stage_sound = pygame.mixer.Sound("new_stage.mp3")
-new_life_sound = pygame.mixer.Sound("new_life.mp3")
-new_score_sound = pygame.mixer.Sound("new_score.mp3")
-laser_sound = pygame.mixer.Sound("laser.mp3")
-laser_empty = pygame.mixer.Sound("laser_empty.mp3")
+collision_sound = pygame.mixer.Sound("media/mp3/sfx/collision.mp3")
+rocket_jump_sound = pygame.mixer.Sound("media/mp3/sfx/rocket_jump.mp3")
+new_stage_sound = pygame.mixer.Sound("media/mp3/sfx/new_stage.mp3")
+new_life_sound = pygame.mixer.Sound("media/mp3/sfx/new_life.mp3")
+new_score_sound = pygame.mixer.Sound("media/mp3/sfx/new_score.mp3")
+laser_sound = pygame.mixer.Sound("media/mp3/sfx/laser.mp3")
+laser_empty = pygame.mixer.Sound("media/mp3/sfx/laser_empty.mp3")
+shot_sound = pygame.mixer.Sound("media/mp3/sfx/shot.mp3")
 
 #Проверка выиграл или проиграл
 winner = 0
@@ -69,17 +70,41 @@ for _ in range(100):
 # Стадия игры
 stage = 1
 
+# Начальные условия выстрела
+shots = []  # Список выстрелов
+shot_speed = 10  # Скорость выстрела
+gun_shell = 3 # Обойма
+
+# Загружаем картинку выстрела
+shot_img = pygame.image.load("media/png/particles/shot.png").convert_alpha()
+shot_img = pygame.transform.scale(shot_img, (16, 16))
+
+# Загружаем фоны главного экрана
 if (stage == 1):
-    back_img = pygame.image.load("back_1.png").convert_alpha()
+    back_img = pygame.image.load("media/png/back/back_1.png").convert_alpha()
     back_img = pygame.transform.scale(back_img, (width, height))
-    const_img = pygame.image.load("const_1.png").convert_alpha()
+    const_img = pygame.image.load("media/png/const/const_1.png").convert_alpha()
     const_img = pygame.transform.scale(const_img, (width, height))
 if (stage == 2):
-    back_img = pygame.image.load("back_2.png").convert_alpha()
+    back_img = pygame.image.load("media/png/back/back_2.png").convert_alpha()
     back_img = pygame.transform.scale(back_img, (width, height))
-    const_img = pygame.image.load("const_2.png").convert_alpha()
+    const_img = pygame.image.load("media/png/const/const_2.png").convert_alpha()
     const_img = pygame.transform.scale(const_img, (width, height))
-
+if (stage == 3):
+    back_img = pygame.image.load("media/png/back/back_3.png").convert_alpha()
+    back_img = pygame.transform.scale(back_img, (width, height))
+    const_img = pygame.image.load("media/png/const/const_3.png").convert_alpha()
+    const_img = pygame.transform.scale(const_img, (width, height))
+if (stage == 4):
+    back_img = pygame.image.load("media/png/back/back_4.png").convert_alpha()
+    back_img = pygame.transform.scale(back_img, (width, height))
+    const_img = pygame.image.load("media/png/const/const_4.png").convert_alpha()
+    const_img = pygame.transform.scale(const_img, (width, height))
+if (stage == 5):
+    back_img = pygame.image.load("media/png/back/back_5.png").convert_alpha()
+    back_img = pygame.transform.scale(back_img, (width, height))
+    const_img = pygame.image.load("media/png/const/const_5.png").convert_alpha()
+    const_img = pygame.transform.scale(const_img, (width, height))
 
 
 # Создание массива значений цвета для затемнения
@@ -103,19 +128,35 @@ obstacle_min_size = 30
 obstacle_max_size = 30
 obstacle_pos = [width / 2, height - obstacle_max_size - (ground_height + 1)]
 
+# Параметры объекта Танк
+tank_min_size = 64
+tank_max_size = 64
+tank_pos = [width / 2, height - tank_max_size - (ground_height + 1)]
+
 # Параметры скроллинга и игрового процесса
 scrolling_speed = 2
 obstacle_speed = random.randint(4, 6)
+tank_speed = 5
 score = 1
 lives = 3
 second_chance = 0
 bomb_ready = 0
+gun_ready = 0
 
 # Параметры фоновых блоков
 tile_size = 32
 tiles_per_row = width // tile_size + 1
 tiles_per_col = ground_height // tile_size + 1
 ground_tiles = []
+
+# Загрузка изображений танка
+tank_img = pygame.image.load("media/png/objects/tank.png")
+tank_img = pygame.transform.scale(tank_img, (128, tank_max_size))
+
+tile_4 = "media/png/ground/def/solid_4_"+str(stage)+".png"
+tile_2 = "media/png/ground/def/solid_2_"+str(stage)+".png"
+tile_3 = "media/png/ground/def/solid_3_"+str(stage)+".png"
+tile_1 = "media/png/ground/def/solid_1_"+str(stage)+".png"
 
 # Загрузка изображений, формирующих полотно дороги
 count_col = 0
@@ -125,15 +166,15 @@ for row in range(tiles_per_col):
         row_var = random.randint(1, 2)
         if (count_col == 1):
             if (row_var == 1):
-                ground_tile = pygame.image.load("solid_4.png").convert_alpha()
+                ground_tile = pygame.image.load(tile_4).convert_alpha()
             if (row_var == 2):
-                ground_tile = pygame.image.load("solid_2.png").convert_alpha()
+                ground_tile = pygame.image.load(tile_2).convert_alpha()
                 
         if (count_col == 2):
             if (row_var == 1):
-                ground_tile = pygame.image.load("solid_3.png").convert_alpha()
+                ground_tile = pygame.image.load(tile_3).convert_alpha()
             if (row_var == 2):
-                ground_tile = pygame.image.load("solid.png").convert_alpha()
+                ground_tile = pygame.image.load(tile_1).convert_alpha()
 
         if (row_var != 1):
             row_var = random.randint(1, 2)
@@ -145,27 +186,45 @@ for row in range(tiles_per_col):
         count_col = 1
 
 # Скины для энергошаров
-obstacle_img_def = pygame.image.load("obst.png").convert_alpha()
+obstacle_img_def = pygame.image.load("media/png/obs/obst.png").convert_alpha()
 obstacle_img_def = pygame.transform.scale(obstacle_img_def, (obstacle_max_size, obstacle_max_size))
-obstacle_img_g = pygame.image.load("obst_green.png").convert_alpha()
+obstacle_img_g = pygame.image.load("media/png/obs/obst_green.png").convert_alpha()
 obstacle_img_g = pygame.transform.scale(obstacle_img_g, (obstacle_max_size, obstacle_max_size))
-obstacle_img_y = pygame.image.load("obst_yellow.png").convert_alpha()
+obstacle_img_y = pygame.image.load("media/png/obs/obst_yellow.png").convert_alpha()
 obstacle_img_y = pygame.transform.scale(obstacle_img_y, (obstacle_max_size, obstacle_max_size))
-obstacle_img_r = pygame.image.load("obst_red.png").convert_alpha()
+obstacle_img_r = pygame.image.load("media/png/obs/obst_red.png").convert_alpha()
 obstacle_img_r = pygame.transform.scale(obstacle_img_r, (obstacle_max_size, obstacle_max_size))
-obstacle_img_f = pygame.image.load("obst_final.png").convert_alpha()
+obstacle_img_f = pygame.image.load("media/png/obs/obst_final.png").convert_alpha()
 obstacle_img_f = pygame.transform.scale(obstacle_img_f, (obstacle_max_size, obstacle_max_size))
-obstacle_img_ex = pygame.image.load("obst_explosed.png").convert_alpha()
-obstacle_img_ex = pygame.transform.scale(obstacle_img_ex, (obstacle_max_size, obstacle_max_size))
-obstacle_img_ex_2 = pygame.image.load("obst_explosed_2.png").convert_alpha()
+obstacle_img_ex_2 = pygame.image.load("media/png/obs/obst_explosed_2.png").convert_alpha()
 obstacle_img_ex_2 = pygame.transform.scale(obstacle_img_ex_2, (obstacle_max_size, obstacle_max_size))
+
+# Иконки для интерфейса
+obstacle_img_ex = pygame.image.load("media/png/interface/obst_explosed.png").convert_alpha()
+obstacle_img_ex = pygame.transform.scale(obstacle_img_ex, (obstacle_max_size, obstacle_max_size))
+interface_img_gun = pygame.image.load("media/png/interface/gun_shell.png").convert_alpha()
+interface_img_gun = pygame.transform.scale(interface_img_gun, (obstacle_max_size, obstacle_max_size))
 
 
 obstacle_img = obstacle_img_def
+obstacle_img_prev  = obstacle_img_def
+
+# Функция для изменения размера изображения
+def resize_image(image, new_size):
+    return pygame.transform.scale(image, new_size)
+
+resize_speed = 1  # Скорость изменения размера
+resize_speed_shot = 3  # Скорость изменения размера
+resizing = False  # Флаг, отвечающий за изменение размера
+current_size = obstacle_max_size
+wanted_size = 31
+current_size_shot = 16
+wanted_size_shot = 20
 
 
 # Загрузка изображений игрока
-player_images = ['Player_stand_1.png', 'Player_stand_2.png', 'Player_jump_1.png', 'Player_jump_2.png', 'Player_1.png', 'Player_2.png']
+pi_dir = "media/png/player/"
+player_images = [pi_dir+'Player_stand_1.png', pi_dir+'Player_stand_2.png', pi_dir+'Player_jump_1.png', pi_dir+'Player_jump_2.png', pi_dir+'Player_1.png', pi_dir+'Player_2.png']
 player_imgs = []
 for img_name in player_images:
     player_img = pygame.image.load(img_name).convert_alpha()
@@ -183,7 +242,7 @@ obstacle_state = 0
 
 
 # Загрузка изображения столкновения
-eximage_path = "expl.png"
+eximage_path = "media/png/mask/expl.png"
 eximage = pygame.image.load(eximage_path)
 
 # Шрифт для отображения счета и жизней
@@ -218,7 +277,7 @@ def display_text(text, y):
 
 # Функция сброса игры
 def reset_game(new_stage, is_winner):
-    global player_pos, is_jumping, is_moving_left, is_moving_right, move_velocity, jump_velocity, obstacle_pos, score, lives, game_over, const_img, back_img, darkened_data, darkened_img, data, stage, winner, bomb_ready
+    global player_pos, is_jumping, is_moving_left, is_moving_right, move_velocity, jump_velocity, obstacle_pos, score, lives, game_over, const_img, back_img, darkened_data, darkened_img, data, stage, winner, bomb_ready, wanted_size, gun_ready, tile_1, tile_2, tile_3, tile_4, ground_tile
     player_pos = [width / 2, height - player_size - ground_height]
     is_jumping = False
     is_moving_left = True
@@ -230,6 +289,13 @@ def reset_game(new_stage, is_winner):
     lives = 3
     game_over = False
     bomb_ready = 0
+    gun_ready = 1
+    if (new_stage==1): wanted_size = 31
+    if (new_stage==2): wanted_size = 32
+    if (new_stage==3): wanted_size = 33
+    if (new_stage==4): wanted_size = 34
+    if (new_stage==5): wanted_size = 35
+
 
     # Сброс заднего фона
     if (is_winner == 1):
@@ -239,27 +305,64 @@ def reset_game(new_stage, is_winner):
         if (new_stage == 2):
             next_stage = 2
             stage = 2
+        if (new_stage == 3):
+            next_stage = 3
+            stage = 3
+        if (new_stage == 4):
+            next_stage = 4
+            stage = 4
+        if (new_stage == 5):
+            next_stage = 5
+            stage = 5
     else:
             next_stage = 1
             stage = 1
 
-    pygame.mixer.music.load("background_music_"+str(next_stage)+".mp3")
+    pygame.mixer.music.load("media/mp3/music/background_music_"+str(next_stage)+".mp3")
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.7)
-    back_img = pygame.image.load("back_"+str(next_stage)+".png").convert_alpha()
+    back_img = pygame.image.load("media/png/back/back_"+str(next_stage)+".png").convert_alpha()
     back_img = pygame.transform.scale(back_img, (width, height))
-    const_img = pygame.image.load("const_"+str(next_stage)+".png").convert_alpha()
+    const_img = pygame.image.load("media/png/const/const_"+str(next_stage)+".png").convert_alpha()
     const_img = pygame.transform.scale(const_img, (width, height))
     data = pygame.surfarray.pixels3d(const_img)
     darkened_data = (data * 0.4)
     darkened_img = make_surface(darkened_data)
     screen.blit(darkened_img, (0, 0))
     winner = 0
+    ground_tiles.clear()
+    tile_4 = "media/png/ground/def/solid_4_"+str(stage)+".png"
+    tile_2 = "media/png/ground/def/solid_2_"+str(stage)+".png"
+    tile_3 = "media/png/ground/def/solid_3_"+str(stage)+".png"
+    tile_1 = "media/png/ground/def/solid_1_"+str(stage)+".png"
     
-    #pygame.display.update()
+    # Загрузка изображений, формирующих полотно дороги
+    count_col = 0
+    for row in range(tiles_per_col):
+        count_col += 1
+        for col in range(tiles_per_row):
+            row_var = random.randint(1, 2)
+            if (count_col == 1):
+                if (row_var == 1):
+                    ground_tile = pygame.image.load(tile_4).convert_alpha()
+                if (row_var == 2):
+                    ground_tile = pygame.image.load(tile_2).convert_alpha()
+                
+            if (count_col == 2):
+                if (row_var == 1):
+                    ground_tile = pygame.image.load(tile_3).convert_alpha()
+                if (row_var == 2):
+                    ground_tile = pygame.image.load(tile_1).convert_alpha()
 
-#change_back(str(stage))
-   
+            if (row_var != 1):
+                row_var = random.randint(1, 2)
+        
+            ground_tile = pygame.transform.scale(ground_tile, (tile_size, tile_size))
+            ground_tiles.append((ground_tile, (col * tile_size, height - (row + 1) * tile_size)))
+
+        if (count_col > 1):
+            count_col = 1
+    
     
 # Функция проверки столкновения игрока с препятствием
 def check_collision(player_pos, obstacle_pos):
@@ -269,14 +372,30 @@ def check_collision(player_pos, obstacle_pos):
     o_x = obstacle_pos[0]
     o_y = obstacle_pos[1]
     o_size = obstacle_max_size
-
     if (o_x <= p_x < o_x + o_size) or (o_x <= p_x + p_size < o_x + o_size):
         if o_y <= p_y < o_y + o_size:
             return True
         elif o_y <= p_y + p_size < o_y + o_size:
             return True
-
     return False
+
+# Функция проверки столкновения игрока с танком
+def check_collision_tank(player_pos, tank_pos):
+    p_x = player_pos[0]
+    p_y = player_pos[1]
+    p_size = player_size
+    o_x = tank_pos[0]
+    o_y = tank_pos[1]
+    ox_size = 128
+    oy_size = 64
+    if (o_x <= p_x < o_x + ox_size) or (o_x <= p_x + p_size < o_x + ox_size):
+        if o_y <= p_y < o_y + oy_size:
+            return True
+        elif o_y <= p_y + p_size < o_y + oy_size:
+            return True
+    return False
+
+
 
 running = True
 is_jumping = False
@@ -289,6 +408,9 @@ game_over_text_y = height // 2 - 120
 obstacle_frequency = 0
 obstacle_counter = 0
 obstacles = []
+tank_frequency = 0
+tank_counter = 0
+tanks = []
 
 # Параметры таймера
 timer_minutes = 0
@@ -356,7 +478,23 @@ while running:
                     pygame.mixer.music.pause()  # Пауза музыки
                 else:
                     pygame.mixer.music.unpause()  # Возобновление музыки    
+            
+            # --------------------- БЛОК СТРЕЛЬБЫ -----------------------
             if event.key == pygame.K_SPACE:
+                if not game_over:
+                    if (lives > 1) and (gun_shell > 0):
+                        shot_pos = [player_pos[0] + 30, player_pos[1] + 7]  # Расположение выстрела относительно игрока
+                        shot_sound.play()
+                        shots.append(shot_pos)
+                        gun_shell -= 1
+                        if gun_shell == 0:
+                            lives = lives - 1
+                            gun_shell = 3
+                    else:
+                        laser_empty.play()
+            # --------------------- КОНЕЦ БЛОКА СТРЕЛЬБЫ -----------------
+            
+            if event.key == pygame.K_UP:
                 if not game_over:
                     rocket_jump_sound.play()
                     player_state = 1
@@ -374,14 +512,11 @@ while running:
                         #звук подрыва энергошаров
                         laser_sound.play()
                         obstacle_state = 1
-                        bomb_ready=0
                     else:
                         #звук что оружие не заряжено
                         laser_empty.play()
-                        bomb_ready=0
-                            
 
-            if event.key == pygame.K_LCTRL:
+            if event.key == pygame.K_DOWN:
                 if not game_over:
                     player_state = 2
                     is_jumping = False
@@ -421,7 +556,9 @@ while running:
                 timer_counter = timer_frequency
             else:
                 timer_counter -= 1
-
+        
+        resizing = not resizing
+        
         # Ограничение игрока относительно земли
         if player_pos[1] > height - player_size - (ground_height):
             player_pos[1] = height - player_size - (ground_height + 2)
@@ -436,6 +573,12 @@ while running:
 
         if lives > 10:
             bomb_ready = 1
+        else:
+            bomb_ready = 0
+        if lives > 1:
+            gun_ready = 1
+        else:
+            gun_ready = 0
 
         # Проверка, чтобы игрок не мог прыгнуть выше верхней границы экрана
         if player_pos[1] < 1:
@@ -447,6 +590,39 @@ while running:
             if player_pos[1] + player_size < height - (ground_height + 2):
                 player_pos[1] += (gravity*10)
                 player_state = 2
+
+        # Создание танков с заданной частотой
+        if tank_counter == 0:
+            
+            moref = 1000 - ((100* stage)+100)
+            
+            tank_frequency = random.randint(50, moref)
+            tank_counter = tank_frequency
+            tank_size = random.randint(tank_min_size, tank_max_size)
+            tank_pos[0] = width
+            tank_pos[1] = height - tank_size - (ground_height - 6)
+            tanks.append(list(tank_pos))
+        else:
+            tank_counter -= 1
+        # Обновление позиций танков и удаление вышедших за границу экрана
+        for tank in tanks:
+            tank[0] -= tank_speed
+            if tank[0] + tank_max_size < 0:
+                tanks.remove(tank)
+            if check_collision_tank(player_pos, tank):
+                lives -= 1
+                if lives == 0:
+                    cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                    collision_sound.play()
+                    game_over = True
+                    break
+                else:
+                    cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                    collision_sound.play()
+                    is_jumping = True
+                    jump_velocity = 10
+                    tanks.remove(tank)
+                    player_state = 3
 
         # Создание препятствий с заданной частотой
         if obstacle_counter < score:
@@ -473,6 +649,7 @@ while running:
                 # Каждые 10 очков даём жизнь
                 if ((score-1) % 10) == 0:
                     new_life_sound.play()
+                    new_life_sound.set_volume(0.4)
                     lives +=1
                 # На 50 очках сброс интенсивности и замена спрайта
                 if (score == 50):
@@ -529,6 +706,7 @@ while running:
                 lives -= 1
                 if lives == 0:
                     cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                    collision_sound.play()
                     game_over = True
                     break
                 else:
@@ -557,6 +735,44 @@ while running:
         screen.blit(darkened_img, (0, 0))
         screen.blit(back_img, (x_offset, 0))  # Рендерим фон с учетом смещения
 
+        # --------------------- БЛОК СТРЕЛЬБЫ -----------------------
+        # Обработка движения выстрелов
+        for shot in shots[:]:
+            shot[0] += shot_speed
+            if shot[0] > 800:  # Проверка, достиг ли выстрел края экрана
+                shots.remove(shot)
+
+        # Проверка столкновений выстрелов с препятствиями
+        for shot in shots[:]:
+            for obstacle in obstacles[:]:
+                # Прямоугольники для проверок столкновений
+                shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
+                obstacle_rect = pygame.Rect(obstacle[0], obstacle[1], 30, 30)
+                if shot_rect.colliderect(obstacle_rect):  # Проверка на столкновение
+                    score = score + 1
+                    ocparticles = [ocParticle(obstacle[0], obstacle[1]) for _ in range(ocparticle_count)]
+                    new_score_sound.play()
+                    shots.remove(shot)
+                    obstacles.remove(obstacle)
+                    break
+        
+        for shot in shots[:]:
+            for tank in tanks[:]:
+                # Прямоугольники для проверок столкновений
+                shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
+                tank_rect = pygame.Rect(tank[0], tank[1], 128, 64)
+                if shot_rect.colliderect(tank_rect):  # Проверка на столкновение
+                    ocparticles = [ocParticle(tank[0], tank[1]) for _ in range(ocparticle_count)]
+                    laser_sound.play()
+                    shots.remove(shot)
+                    tanks.remove(tank)
+                    break
+        # Отрисовка выстрелов
+        for shot in shots:
+            screen.blit(shot_img_sized, shot)
+        # --------------------- КОНЕЦ БЛОКА СТРЕЛЬБЫ -----------------
+
+
         # Проверка, не вышел ли фон за пределы экрана
         if x_offset < -back_img.get_width():
             x_offset = back_img.get_width() - 1  # Возвращаем фон на начало
@@ -564,10 +780,34 @@ while running:
         # Отрисовка фоновых блоков
         for ground_tile in ground_tiles:
             screen.blit(ground_tile[0], ground_tile[1])
+
+        # Логика изменения размера
+        if resizing:
+            current_size += resize_speed
+            current_size_shot += resize_speed_shot
+
+            if current_size > wanted_size:  # Например, максимальный размер 100 пикселей
+                resize_speed = -resize_speed
+            elif current_size < obstacle_min_size:  # Вернуться к минимальному размеру
+                resize_speed = -resize_speed
+
+            if current_size_shot > wanted_size_shot:  # Например, максимальный размер 100 пикселей
+                resize_speed_shot = -resize_speed_shot
+            elif current_size_shot < 16:  # Вернуться к минимальному размеру
+                resize_speed_shot = -resize_speed_shot
+        
+        obstacle_img_sized = resize_image(obstacle_img, (current_size, current_size))
+
+        shot_img_sized = resize_image(shot_img, (current_size_shot, current_size_shot))
     
+    
+        # Отрисовка танков
+        for tank in tanks:
+            screen.blit(tank_img, tank)
+
         # Отрисовка препятствий
         for obstacle in obstacles:
-            screen.blit(obstacle_img, obstacle)
+            screen.blit(obstacle_img_sized, obstacle)
 
         # Анимация изображения игрока
         tiktak += 1
@@ -575,7 +815,9 @@ while running:
             tiktak = 0
         
         if bomb_ready == 1:
-            screen.blit(obstacle_img_ex, (10, 40))
+            screen.blit(obstacle_img_ex, (50, 40))
+        if gun_ready == 1:
+            screen.blit(interface_img_gun, (10, 40))
 
         if obstacle_state == 1:
             obstacle_img = obstacle_img_ex_2
@@ -623,7 +865,8 @@ while running:
             score_show = score
             second_chance = 0
             obstacles.clear()
-            pygame.mixer.music.stop()
+            tanks.clear()
+            #pygame.mixer.music.stop()
             obstacle_img = obstacle_img_def
             if winner == 0:
                 new_stage = 1                
@@ -646,20 +889,56 @@ while running:
                     display_timer(timer_minutes, timer_seconds)
                     display_lives(lives)
                     display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
-                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 30)
+                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 50)
+                    font = pygame.font.Font(None, 26)
+                    display_text("Fractel " + version, game_over_text_y + 190)
+                    display_text("game by Stanislav Nixman", game_over_text_y + 220)
+                    font = pygame.font.Font(None, 36)
+                    is_winner = 1
+                if (stage == 2):
+                    new_stage = 3
+                    display_score(score_show)
+                    display_timer(timer_minutes, timer_seconds)
+                    display_lives(lives)
+                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
+                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 50)
+                    font = pygame.font.Font(None, 26)
+                    display_text("Fractel " + version, game_over_text_y + 190)
+                    display_text("game by Stanislav Nixman", game_over_text_y + 220)
+                    font = pygame.font.Font(None, 36)
+                    is_winner = 1
+                if (stage == 3):
+                    new_stage = 4
+                    display_score(score_show)
+                    display_timer(timer_minutes, timer_seconds)
+                    display_lives(lives)
+                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
+                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 50)
+                    font = pygame.font.Font(None, 26)
+                    display_text("Fractel " + version, game_over_text_y + 190)
+                    display_text("game by Stanislav Nixman", game_over_text_y + 220)
+                    font = pygame.font.Font(None, 36)
+                    is_winner = 1
+                if (stage == 4):
+                    new_stage = 5
+                    display_score(score_show)
+                    display_timer(timer_minutes, timer_seconds)
+                    display_lives(lives)
+                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
+                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 50)
                     font = pygame.font.Font(None, 26)
                     display_text("Fractel " + version, game_over_text_y + 190)
                     display_text("game by Stanislav Nixman", game_over_text_y + 220)
                     font = pygame.font.Font(None, 36)
                     is_winner = 1
 
-                if (stage == 2):
+                if (stage == 5):
                     new_stage = 1
                     display_score(score_show)
                     display_timer(timer_minutes, timer_seconds)
                     display_lives(lives)
                     display_text("Вы прошли игру! You win!", game_over_text_y)
-                    display_text("Enter - перезапуск. Enter for restart. ", game_over_text_y + 30)
+                    display_text("Enter - перезапуск. Enter for restart. ", game_over_text_y + 50)
                     font = pygame.font.Font(None, 26)
                     display_text("Fractel " + version, game_over_text_y + 190)
                     display_text("game by Stanislav Nixman", game_over_text_y + 220)
@@ -675,9 +954,9 @@ while running:
             display_text("Наберите 450 очков! Score 450 points!", game_over_text_y)
             font = pygame.font.Font(None, 26)
             display_text("Управление (Controls):", game_over_text_y + 40)
-            display_text("Space - прыжок(jump). LCTRL - падение (fall)", game_over_text_y + 70)
+            display_text("Вверх (Up) - прыжок(jump). Вниз (Down) - падение (fall)", game_over_text_y + 70)
             display_text("Влево-Вправо (Left-Right), P - пауза (pause)", game_over_text_y + 90)
-            display_text("LALT - подрыв (explose).", game_over_text_y + 110)
+            display_text("LALT - подрыв (explose). SPACE - выстрел (shot)", game_over_text_y + 110)
             display_text("TAB - полноэкранный режим (fullscreen).", game_over_text_y + 130)
             display_text("ESC - оконный режим (windowed)", game_over_text_y + 150)
             font = pygame.font.Font(None, 36)
