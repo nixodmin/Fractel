@@ -13,17 +13,14 @@ RU:
 Управление:
 
 Курсор LEFT/RIGHT - движение вправо-влево
+Курсор UP/DOWN - взлёт-падение
 
-SPACE - активация реактивного ранца (прыжок)
-
-LCTRL - отключить реактивный ранец (быстрое падение)
+SPACE - выстрел (три выстрела за 1 энергию)
+LALT - подрыв всех энергошаров на экране за 10 энергии
 
 Дополнительно:
-
 TAB - переход в FullScreen
-
 ESC - возврат в оконный режим
-
 P - пауза
 
 
@@ -58,19 +55,11 @@ Pressing LEFT CONTROL allows you to turn off the jetpack and fall faster at any 
 
 Controls:
 
-LEFT/RIGHT - left and right moves
+Курсор LEFT/RIGHT - left-right
+Курсор UP/DOWN - jump-fall
 
-SPACE - activate jetpack (jump)
-
-LCTRL - disable jetpack (fast fall)
-
-Additional:
-
-TAB - switch to FullScreen
-
-ESC - return to windowed mode
-
-P - pause
+SPACE - shot (3 shots for 1 energy)
+LALT - destroys all energy ball on screen for 10 energy
 
 How to make your own build:
 
