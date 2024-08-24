@@ -93,7 +93,7 @@ pip install matplotlib
 
 Place the fractel.py file in a separate directory
 
-Take media files from the release you want own build https://github.com/nixodmin/Fractel/releases
+Take media files from the release you want to build https://github.com/nixodmin/Fractel/releases
 
 Place directory with media files in the directory with the fractel.py file
 
