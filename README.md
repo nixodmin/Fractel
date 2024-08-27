@@ -4,7 +4,7 @@
 
 RU:
 
-Это простая игра-скроллер, где главная задача у игрока набрать счёт равный 450 очков.
+Это простая игра-скроллер, где главная задача у игрока набрать счёт равный 450 и победить босса.
 Навстречу игроку летят энергошары, очко даётся за достижение энергошара левого края экрана.
 Каждые 10 энергошаров, которые засчитались как очки, дают игроку плюс одну энергию (жизнь).
 Если игрок столкнётся с энергошаром, то потеряет одну энергию(жизнь). В начале игры вам даётся 3 энергии.
@@ -69,7 +69,7 @@ pip install matplotlib
 
 EN:
 
-This is a simple scrolling game, where the main task of the player is to score 450 points.
+This is a simple scrolling game, where the main task of the player is to score 450 points and destroy level boss.
 Energy balls fly towards the player, a point is given for reaching the energy ball on the left edge of the screen.
 Every 10 energy balls that are counted as points give the player plus one energy (life).
 If the player collides with an energy ball, he will lose one energy (life). At the beginning of the game, you are given 3 energies.
