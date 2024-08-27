@@ -5,12 +5,15 @@ import random
 import time
 import math
 
-version = "1.0.5"
+version = "1.0.6"
 
 pygame.init()
 pygame.mixer.init()
 
 # --------------------- Блок основных игровых переменных ------------------
+
+# Текущий язык
+current_language = 'russian'  # По умолчанию русский
 # Указатель уровня игры (всего пять уровней на данный момент)
 stage = 1
 
@@ -57,6 +60,18 @@ gun_shell = 3 # Обойма
 rockets_state = 0
 rockets_shell = 3
 
+# бафф на размер выстрела и урон по боссам
+big_shot = 0
+# постоянный щит
+g_shield = 0
+g_shield_switch = 0
+# бонус на подрыв шаров
+g_obst_ex = 0
+# бонус к ракетам
+g_rockets = 0
+g_rockets_shell = 5
+
+
 # Переменная для отслеживания позиции фона
 x_offset = 0
 
@@ -77,6 +92,13 @@ obstacle_pos = [width / 2, height - obstacle_max_size - (ground_height + 1)]
 exen_min_size = 30
 exen_max_size = 30
 exen_pos = [width / 2, height - exen_max_size - (ground_height + 1)]
+
+# Параметры объекта бафф (он же - дружественный дрон тип 2)
+exen_b_min_size = 30
+exen_b_max_size = 30
+exen_b_pos = [width / 2, height - exen_b_max_size - (ground_height + 1)]
+
+
 
 # Параметры объекта nyan (она же - ракета)
 nyan_min_size = 30
@@ -111,13 +133,15 @@ boss_4_pos = [width / 2, height - boss_4_max_size - (ground_height + 1)]
 # Параметры объекта Босс (он же Чужой Мех)
 boss_5_min_size = 256
 boss_5_max_size = 256
-boss_5_pos = [width / 2, height - boss_5_max_size - (ground_height + 1)]
+#boss_5_pos = [width / 2, height - boss_5_max_size - (ground_height + 1)]
+boss_5_pos = [width / 2, height]
 
 
 # Параметры скроллинга и игрового процесса
 scrolling_speed = 2
 obstacle_speed = random.randint(4, 6)
 exen_speed = 6
+exen_b_speed = 7
 nyan_speed = 6
 tank_speed = 5
 score = 1
@@ -140,9 +164,11 @@ obstacles = []
 tank_frequency = 0
 tank_counter = 0
 exen_counter = 0
+exen_b_counter = -1
 nyan_counter = 0
 tanks = []
 exens = []
+exens_b = []
 nyans = []
 nyan_particles = []
 
@@ -151,35 +177,35 @@ boss_1_defeated = 0
 boss_1_speed = 6
 bosses_1 = []
 boss_1_appear = 0
-boss_1_life = 10
+boss_1_life = 30
 
 boss_2_counter = 0
 boss_2_defeated = 0
 boss_2_speed = 6
 bosses_2 = []
 boss_2_appear = 0
-boss_2_life = 12
+boss_2_life = 34
 
 boss_3_counter = 0
 boss_3_defeated = 0
 boss_3_speed = 6
 bosses_3 = []
 boss_3_appear = 0
-boss_3_life = 14
+boss_3_life = 38
 
 boss_4_counter = 0
 boss_4_defeated = 0
 boss_4_speed = 6
 bosses_4 = []
 boss_4_appear = 0
-boss_4_life = 16
+boss_4_life = 44
 
 boss_5_counter = 0
 boss_5_defeated = 0
 boss_5_speed = 6
 bosses_5 = []
 boss_5_appear = 0
-boss_5_life = 18
+boss_5_life = 48
 
 # Объект для отслеживания времени
 clock = pygame.time.Clock()
@@ -188,7 +214,7 @@ clock = pygame.time.Clock()
 timer_minutes = 0
 timer_seconds = 0
 timer_font = pygame.font.Font(None, 36)
-timer_text = timer_font.render("Время: 00:00", True, WHITE)
+timer_text = timer_font.render("00:00", True, WHITE)
 timer_text_x = width // 2 - timer_text.get_width() // 2
 timer_text_y = 10
 timer_frequency = 30  # Частота обновления таймера (в кадрах)
@@ -270,6 +296,7 @@ laser_empty = pygame.mixer.Sound("media/mp3/sfx/laser_empty.mp3")
 shot_sound = pygame.mixer.Sound("media/mp3/sfx/shot.mp3")
 rocket_launch_sound = pygame.mixer.Sound("media/mp3/sfx/rocket_launch.mp3")
 boss_death_sound = pygame.mixer.Sound("media/mp3/sfx/boss_death.mp3")
+shield_on_sound = pygame.mixer.Sound("media/mp3/sfx/shield_on.mp3")
 # ------------------ Конец блока загрузки звуковых файлов -------------
 
 
@@ -281,8 +308,11 @@ tile_3 = "media/png/ground/def/solid_3_"+str(stage)+".png"
 tile_1 = "media/png/ground/def/solid_1_"+str(stage)+".png"
 
 # Загружаем картинку выстрела
-shot_img = pygame.image.load("media/png/particles/shot.png").convert_alpha()
-shot_img = pygame.transform.scale(shot_img, (16, 16))
+shot_img_1 = pygame.image.load("media/png/particles/shot.png").convert_alpha()
+shot_img_1 = pygame.transform.scale(shot_img_1, (16, 16))
+shot_img_2 = pygame.image.load('media/png/particles/nyan_particle.png')
+shot_img_2 = pygame.transform.scale(shot_img_2, (16, 16))
+shot_img = shot_img_1
 
 # Загружаем фоны главного экрана в соответствии с уровнем игры
 if (stage == 1):
@@ -320,6 +350,10 @@ darkened_img = make_surface(darkened_data)
 exen_img = pygame.image.load("media/png/objects/extra_energy.png")
 exen_img = pygame.transform.scale(exen_img, (exen_max_size, exen_max_size))
 
+# Загрузка изображений баффа
+exen_b_img = pygame.image.load("media/png/objects/extra_buff.png")
+exen_b_img = pygame.transform.scale(exen_b_img, (exen_b_max_size, exen_b_max_size))
+
 # Загрузка изображений nyan (ракеты)
 nyan_img = pygame.image.load("media/png/objects/nyan.png")
 nyan_img = pygame.transform.scale(nyan_img, (nyan_max_size, nyan_max_size))
@@ -331,50 +365,120 @@ nyan_particle_image_2 = pygame.transform.scale(nyan_particle_image_2, (8, 8))
 # Загрузка изображений танка
 tank_img = pygame.image.load("media/png/objects/tank.png")
 tank_img = pygame.transform.scale(tank_img, (128, tank_max_size))
+# Создание копии изображения с прозрачностью
 
 # Загрузка изображений босса Кибер-Панк
 boss_1_1_img = pygame.image.load("media/png/boss/boss_1_1.png")
 boss_1_1_img = pygame.transform.scale(boss_1_1_img, (256, 256))
+boss_1_1_alpha_img = boss_1_1_img.copy()
+boss_1_1_alpha_img.set_alpha(255)
 boss_1_2_img = pygame.image.load("media/png/boss/boss_1_2.png")
 boss_1_2_img = pygame.transform.scale(boss_1_2_img, (256, 256))
+boss_1_2_alpha_img = boss_1_2_img.copy()
+boss_1_2_alpha_img.set_alpha(255)
+boss_1_3_img = pygame.image.load("media/png/boss/boss_1_3.png")
+boss_1_3_img = pygame.transform.scale(boss_1_3_img, (256, 256))
+boss_1_3_alpha_img = boss_1_3_img.copy()
+boss_1_3_alpha_img.set_alpha(255)
+boss_1_4_img = pygame.image.load("media/png/boss/boss_1_4.png")
+boss_1_4_img = pygame.transform.scale(boss_1_4_img, (256, 256))
+boss_1_4_alpha_img = boss_1_4_img.copy()
+boss_1_4_alpha_img.set_alpha(255)
+
 
 # Загрузка изображений босса Болотный Мех
 boss_2_1_img = pygame.image.load("media/png/boss/boss_2_1.png")
 boss_2_1_img = pygame.transform.scale(boss_2_1_img, (256, 256))
+boss_2_1_alpha_img = boss_2_1_img.copy()
+boss_2_1_alpha_img.set_alpha(255)
 boss_2_2_img = pygame.image.load("media/png/boss/boss_2_2.png")
 boss_2_2_img = pygame.transform.scale(boss_2_2_img, (256, 256))
+boss_2_2_alpha_img = boss_2_2_img.copy()
+boss_2_2_alpha_img.set_alpha(255)
+boss_2_3_img = pygame.image.load("media/png/boss/boss_2_3.png")
+boss_2_3_img = pygame.transform.scale(boss_2_3_img, (256, 256))
+boss_2_3_alpha_img = boss_2_3_img.copy()
+boss_2_3_alpha_img.set_alpha(255)
+boss_2_4_img = pygame.image.load("media/png/boss/boss_2_4.png")
+boss_2_4_img = pygame.transform.scale(boss_2_4_img, (256, 256))
+boss_2_4_alpha_img = boss_2_4_img.copy()
+boss_2_4_alpha_img.set_alpha(255)
+
 
 # Загрузка изображений босса Бклый Птиц
 boss_3_1_img = pygame.image.load("media/png/boss/boss_3_1.png")
 boss_3_1_img = pygame.transform.scale(boss_3_1_img, (256, 256))
+boss_3_1_alpha_img = boss_3_1_img.copy()
+boss_3_1_alpha_img.set_alpha(255)
 boss_3_2_img = pygame.image.load("media/png/boss/boss_3_2.png")
 boss_3_2_img = pygame.transform.scale(boss_3_2_img, (256, 256))
+boss_3_2_alpha_img = boss_3_2_img.copy()
+boss_3_2_alpha_img.set_alpha(255)
+boss_3_3_img = pygame.image.load("media/png/boss/boss_3_3.png")
+boss_3_3_img = pygame.transform.scale(boss_3_3_img, (256, 256))
+boss_3_3_alpha_img = boss_3_3_img.copy()
+boss_3_3_alpha_img.set_alpha(255)
+boss_3_4_img = pygame.image.load("media/png/boss/boss_3_4.png")
+boss_3_4_img = pygame.transform.scale(boss_3_4_img, (256, 256))
+boss_3_4_alpha_img = boss_3_4_img.copy()
+boss_3_4_alpha_img.set_alpha(255)
 
 # Загрузка изображений босса Снежный Мех
 boss_4_1_img = pygame.image.load("media/png/boss/boss_4_1.png")
 boss_4_1_img = pygame.transform.scale(boss_4_1_img, (256, 256))
+boss_4_1_alpha_img = boss_4_1_img.copy()
+boss_4_1_alpha_img.set_alpha(255)
 boss_4_2_img = pygame.image.load("media/png/boss/boss_4_2.png")
 boss_4_2_img = pygame.transform.scale(boss_4_2_img, (256, 256))
+boss_4_2_alpha_img = boss_4_2_img.copy()
+boss_4_2_alpha_img.set_alpha(255)
+boss_4_3_img = pygame.image.load("media/png/boss/boss_4_3.png")
+boss_4_3_img = pygame.transform.scale(boss_4_3_img, (256, 256))
+boss_4_3_alpha_img = boss_4_3_img.copy()
+boss_4_3_alpha_img.set_alpha(255)
+boss_4_4_img = pygame.image.load("media/png/boss/boss_4_4.png")
+boss_4_4_img = pygame.transform.scale(boss_4_4_img, (256, 256))
+boss_4_4_alpha_img = boss_4_4_img.copy()
+boss_4_4_alpha_img.set_alpha(255)
 
 # Загрузка изображений босса Чужой Мех
 boss_5_1_img = pygame.image.load("media/png/boss/boss_5_1.png")
 boss_5_1_img = pygame.transform.scale(boss_5_1_img, (256, 256))
+boss_5_1_alpha_img = boss_5_1_img.copy()
+boss_5_1_alpha_img.set_alpha(255)
 boss_5_2_img = pygame.image.load("media/png/boss/boss_5_2.png")
 boss_5_2_img = pygame.transform.scale(boss_5_2_img, (256, 256))
-
-
-
+boss_5_2_alpha_img = boss_5_2_img.copy()
+boss_5_2_alpha_img.set_alpha(255)
+boss_5_3_img = pygame.image.load("media/png/boss/boss_5_3.png")
+boss_5_3_img = pygame.transform.scale(boss_5_3_img, (256, 256))
+boss_5_3_alpha_img = boss_5_3_img.copy()
+boss_5_3_alpha_img.set_alpha(255)
+boss_5_4_img = pygame.image.load("media/png/boss/boss_5_4.png")
+boss_5_4_img = pygame.transform.scale(boss_5_4_img, (256, 256))
+boss_5_4_alpha_img = boss_5_4_img.copy()
+boss_5_4_alpha_img.set_alpha(255)
 
 
 # Иконки для интерфейса
 obstacle_img_ex = pygame.image.load("media/png/interface/obst_explosed.png").convert_alpha()
 obstacle_img_ex = pygame.transform.scale(obstacle_img_ex, (obstacle_max_size, obstacle_max_size))
+g_obstacle_img_ex = pygame.image.load("media/png/interface/g_obst_explosed.png").convert_alpha()
+g_obstacle_img_ex = pygame.transform.scale(g_obstacle_img_ex, (obstacle_max_size, obstacle_max_size))
 interface_img_gun = pygame.image.load("media/png/interface/gun_shell.png").convert_alpha()
 interface_img_gun = pygame.transform.scale(interface_img_gun, (obstacle_max_size, obstacle_max_size))
 interface_img_rocket = pygame.image.load("media/png/interface/rocket_shell.png").convert_alpha()
 interface_img_rocket = pygame.transform.scale(interface_img_rocket, (obstacle_max_size, obstacle_max_size))
+interface_img_g_rocket = pygame.image.load("media/png/interface/g_rocket_shell.png").convert_alpha()
+interface_img_g_rocket = pygame.transform.scale(interface_img_g_rocket, (obstacle_max_size, obstacle_max_size))
+
 interface_img_shield = pygame.image.load("media/png/interface/shield_energy.png").convert_alpha()
 interface_img_shield = pygame.transform.scale(interface_img_shield, (obstacle_max_size, obstacle_max_size))
+interface_img_g_shield = pygame.image.load("media/png/interface/g_shield.png").convert_alpha()
+interface_img_g_shield = pygame.transform.scale(interface_img_g_shield, (obstacle_max_size, obstacle_max_size))
+interface_img_big_shot = pygame.image.load("media/png/interface/big_shot.png").convert_alpha()
+interface_img_big_shot = pygame.transform.scale(interface_img_big_shot, (obstacle_max_size, obstacle_max_size))
+
 
 # Скины для энергошаров
 obstacle_img_def = pygame.image.load("media/png/obs/obst.png").convert_alpha()
@@ -409,7 +513,7 @@ for img_name in player_images:
 # Генерируем случайные нейтральные частицы и их скорости
 for _ in range(60):
     x = random.randint(0, width)
-    y = random.randint(0, height)
+    y = random.randint(0, (height - 80))
     particles.append((x, y))
     speed = random.randint(1, 5)
     speeds.append(speed)
@@ -439,6 +543,30 @@ for row in range(tiles_per_col):
 # ------------------ Конец блока с циклами -------------
 
 # ----------------------------- Блок с функциями ----------------------
+def switch_language():
+    global current_language
+    if current_language == 'english':
+        current_language = 'russian'
+    else:
+        current_language = 'english'
+
+def new_stage_text(new_stage):
+    if current_language == 'russian':
+        display_text("Следующий уровень " + str(new_stage) + "!", game_over_text_y)
+        display_text("Нажмите [Enter] чтобы продолжить.", game_over_text_y + 30)
+    if current_language == 'english':
+        display_text("Next stage " + str(new_stage) + "!", game_over_text_y)
+        display_text("Press [Enter] for continue.", game_over_text_y + 30)
+
+
+# Функция для уменьшения прозрачности изображения
+def decrease_alpha(surface, amount=50, alpha=255):
+    current_alpha = surface.get_alpha()
+    new_alpha = max(0, current_alpha - amount)
+    surface.set_alpha(new_alpha)
+    return surface, new_alpha
+
+
 # Функция для изменения размера изображения
 def resize_image(image, new_size):
     return pygame.transform.scale(image, new_size)
@@ -451,16 +579,24 @@ def draw_text(surface, text, size, x, y):
 
 # Отображение текста во время паузы
 def draw_text_pause(surface, text, size, x, y):
+    screen.fill((0, 0, 0)) 
+    screen.blit(start_img, (0, 0))
     font = pygame.font.Font(None, size)
     text_surface = font.render(text, True, RED)
     surface.blit(text_surface, (x, y))
 
 # Функции для отображения счета, жизней и текстовых сообщений
 def display_score(score):
-    score_text = font.render("Очки: " + str(score-1), True, WHITE)
+    if current_language == 'russian':
+        score_text = font.render("Очки: " + str(score-1), True, WHITE)
+    if current_language == 'english':
+        score_text = font.render("Score: " + str(score-1), True, WHITE)
     screen.blit(score_text, (10, 10))
 def display_lives(lives):
-    lives_text = font.render("Энергия: " + str(lives), True, WHITE)
+    if current_language == 'russian':
+        lives_text = font.render("Энергия: " + str(lives), True, WHITE)
+    if current_language == 'english':
+        lives_text = font.render("Energy: " + str(lives), True, WHITE)
     screen.blit(lives_text, (width - lives_text.get_width() - 10, 10))
 def display_text(text, y):
     text_render = font.render(text, True, WHITE)
@@ -468,14 +604,40 @@ def display_text(text, y):
 
 # ================================================= Функция сброса игры
 def reset_game(new_stage, is_winner):
-    global player_pos, is_jumping, is_moving_left, is_moving_right, move_velocity, jump_velocity, obstacle_pos, score, lives, game_over, const_img, back_img, darkened_data, darkened_img, data, stage, winner, bomb_ready, wanted_size, gun_ready, shield_ready, rockets_ready, tile_1, tile_2, tile_3, tile_4, ground_tile, boss_1_life, boss_2_life, boss_3_life, boss_4_life, boss_5_life, obstacle_img, obstacle_img_prev
+    global player_pos, is_jumping, is_moving_left, is_moving_right, move_velocity, jump_velocity, obstacle_pos, score, lives,\
+        game_over, const_img, back_img, darkened_data, darkened_img, data, stage, winner, bomb_ready, wanted_size, gun_ready, shield_ready,\
+        rockets_ready, tile_1, tile_2, tile_3, tile_4, ground_tile, boss_1_life, boss_2_life, boss_3_life, boss_4_life, boss_5_life,\
+        obstacle_img, obstacle_img_prev, exen_b_counter, big_shot, shot_img, current_size_shot,\
+        boss_1_1_alpha_img, boss_1_2_alpha_img, boss_1_3_alpha_img, boss_1_4_alpha_img,\
+        boss_2_1_alpha_img, boss_2_2_alpha_img, boss_2_3_alpha_img, boss_2_4_alpha_img,\
+        boss_3_1_alpha_img, boss_3_2_alpha_img, boss_3_3_alpha_img, boss_3_4_alpha_img,\
+        boss_4_1_alpha_img, boss_4_2_alpha_img, boss_4_3_alpha_img, boss_4_4_alpha_img,\
+        boss_5_1_alpha_img, boss_5_2_alpha_img, boss_5_3_alpha_img, boss_5_4_alpha_img,\
+        g_shield, g_shield_switch, g_rockets, g_rockets_shell, g_obst_ex
+    
+    boss_1_1_alpha_img.set_alpha(255), boss_1_2_alpha_img.set_alpha(255), boss_1_3_alpha_img.set_alpha(255), boss_1_4_alpha_img.set_alpha(255)
+    boss_2_1_alpha_img.set_alpha(255), boss_2_2_alpha_img.set_alpha(255), boss_2_3_alpha_img.set_alpha(255), boss_2_4_alpha_img.set_alpha(255)
+    boss_3_1_alpha_img.set_alpha(255), boss_3_2_alpha_img.set_alpha(255), boss_3_3_alpha_img.set_alpha(255), boss_3_4_alpha_img.set_alpha(255)
+    boss_4_1_alpha_img.set_alpha(255), boss_4_2_alpha_img.set_alpha(255), boss_4_3_alpha_img.set_alpha(255), boss_4_4_alpha_img.set_alpha(255)
+    boss_5_1_alpha_img.set_alpha(255), boss_5_2_alpha_img.set_alpha(255), boss_5_3_alpha_img.set_alpha(255), boss_5_4_alpha_img.set_alpha(255)
+
+    big_shot = 0
+    g_obst_ex = 0
+    g_rockets = 0
+    g_rockets_shell = 5
+    g_shield = 0
+    g_shield_switch = 0
+
+    shot_img = shot_img_1
+    current_size_shot = 16
+    exen_b_counter = -1
     obstacle_img = obstacle_img_def
     obstacle_img_prev  = obstacle_img_def
-    boss_1_life = 10
-    boss_2_life = 12
-    boss_3_life = 14
-    boss_4_life = 16
-    boss_5_life = 18
+    boss_1_life = 30
+    boss_2_life = 34
+    boss_3_life = 38
+    boss_4_life = 44
+    boss_5_life = 48
     player_pos = [width / 2, height - player_size - ground_height]
     is_jumping = False
     is_moving_left = True
@@ -681,6 +843,21 @@ def check_collision_exen(player_pos, exen_pos):
             return True
     return False
 
+# Функция проверки столкновения игрока с баффом
+def check_collision_exen_b(player_pos, exen_b_pos):
+    p_x = player_pos[0]
+    p_y = player_pos[1]
+    p_size = player_size
+    o_x = exen_b_pos[0]
+    o_y = exen_b_pos[1]
+    o_size = exen_b_max_size
+    if (o_x <= p_x < o_x + o_size) or (o_x <= p_x + p_size < o_x + o_size):
+        if o_y <= p_y < o_y + o_size:
+            return True
+        elif o_y <= p_y + p_size < o_y + o_size:
+            return True
+    return False
+
 # Функция проверки столкновения игрока с танком
 def check_collision_tank(player_pos, tank_pos):
     p_x = player_pos[0]
@@ -699,7 +876,7 @@ def check_collision_tank(player_pos, tank_pos):
 
 # Функция для отображения таймера
 def display_timer(minutes, seconds):
-    timer_text = timer_font.render(f"Время: {timer_minutes:02}:{timer_seconds:02}", True, WHITE)
+    timer_text = timer_font.render(f"{timer_minutes:02}:{timer_seconds:02}", True, WHITE)
     screen.blit(timer_text, (timer_text_x, timer_text_y))
 
 # Класс для частиц
@@ -758,7 +935,10 @@ while running:
                 else:
                     pygame.mixer.music.pause()
                     
-            
+            if event.key == pygame.K_l:
+                switch_language()
+                #print (current_language)
+
             if event.key == pygame.K_MINUS:
                 if not paused:
                     if not game_over:
@@ -781,7 +961,7 @@ while running:
                         if gun_shell == 0:
                             lives = lives - 1
                             gun_shell = 3
-                    if not paused:
+                    if (lives < 2) and not paused:
                         laser_empty.play()
             # --------------------- КОНЕЦ БЛОКА СТРЕЛЬБЫ -----------------
             # --------------------- БЛОК ракет -----------------------
@@ -791,7 +971,8 @@ while running:
                         lives -= 5
                         rocket_launch_sound.play()
                         rockets_state = 1
-                        rockets_shell = 3
+                        if g_rockets == 1: rockets_shell = g_rockets_shell
+                        if g_rockets == 0: rockets_shell = 3
                     else:
                         laser_empty.play()
                 else:
@@ -819,50 +1000,30 @@ while running:
                         obstacle_state = 1
 
                         if (boss_1_counter == 1) and (boss_1_defeated != 1):
-                            boss_1_life -=15
+                            if g_obst_ex == 1: boss_1_life -=11
+                            if g_obst_ex == 0: boss_1_life -=10
                             cparticles = [cParticle(boss_1_pos[0]-128, boss_1_pos[1]+128) for _ in range(cparticle_count)]
-                            if boss_1_life < 1:
-                                boss_1_defeated = 1
-                                if boss_1_defeated == 1:
-                                    boss_death_sound.play()
-                                    bosses_1.remove(boss_1)
-                        
+                            
                         if (boss_2_counter == 1) and (boss_2_defeated != 1):
-                            boss_2_life -=3
+                            if g_obst_ex == 1: boss_2_life -=12
+                            if g_obst_ex == 0: boss_2_life -=11
                             cparticles = [cParticle(boss_2_pos[0]-128, boss_2_pos[1]+128) for _ in range(cparticle_count)]
-                            if boss_2_life < 1:
-                                boss_2_defeated = 1
-                                if boss_2_defeated == 1:
-                                    boss_death_sound.play()
-                                    bosses_2.remove(boss_2)
-                        
+                                                    
                         if (boss_3_counter == 1) and (boss_3_defeated != 1):
-                            boss_3_life -=3
+                            if g_obst_ex == 1: boss_3_life -=13
+                            if g_obst_ex == 0: boss_3_life -=12
                             cparticles = [cParticle(boss_3_pos[0]-128, boss_3_pos[1]+128) for _ in range(cparticle_count)]
-                            if boss_3_life < 1:
-                                boss_3_defeated = 1
-                                if boss_3_defeated == 1:
-                                    boss_death_sound.play()
-                                    bosses_3.remove(boss_3)
                         
                         if (boss_4_counter == 1) and (boss_4_defeated != 1):
-                            boss_4_life -=3
+                            if g_obst_ex == 1: boss_4_life -=14
+                            if g_obst_ex == 0: boss_4_life -=13
                             cparticles = [cParticle(boss_4_pos[0]-128, boss_4_pos[1]+128) for _ in range(cparticle_count)]
-                            if boss_4_life < 1:
-                                boss_4_defeated = 1
-                                if boss_4_defeated == 1:
-                                    boss_death_sound.play()
-                                    bosses_4.remove(boss_4)
                         
                         if (boss_5_counter == 1) and (boss_5_defeated != 1):
-                            boss_5_life -=3
+                            if g_obst_ex == 1: boss_5_life -=15
+                            if g_obst_ex == 0: boss_5_life -=14
                             cparticles = [cParticle(boss_5_pos[0]-128, boss_5_pos[1]+128) for _ in range(cparticle_count)]
-                            if boss_5_life < 1:
-                                boss_5_defeated = 1
-                                if boss_5_defeated == 1:
-                                    boss_death_sound.play()
-                                    bosses_5.remove(boss_5)
-
+                            
                     else:
                         #звук что оружие не заряжено
                         laser_empty.play()
@@ -980,12 +1141,7 @@ while running:
                     laser_sound.play()
                     nyans.remove(nyan)
                     boss_1_life -=2
-                    if boss_1_life < 1:
-                        boss_1_defeated = 1
-                        if boss_1_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_1.remove(boss_1)
-            
+                                
             # Проверяем столкновение с боссом Болотный Мех    
             for boss_2 in bosses_2:
                 prev_ob_0 = nyan[0]
@@ -995,12 +1151,7 @@ while running:
                     laser_sound.play()
                     nyans.remove(nyan)
                     boss_2_life -=2
-                    if boss_2_life < 1:
-                        boss_2_defeated = 1
-                        if boss_2_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_2.remove(boss_2)
-            
+                    
             # Проверяем столкновение с боссом Белый Птиц
             for boss_3 in bosses_3:
                 prev_ob_0 = nyan[0]
@@ -1010,12 +1161,7 @@ while running:
                     laser_sound.play()
                     nyans.remove(nyan)
                     boss_3_life -=2
-                    if boss_3_life < 1:
-                        boss_3_defeated = 1
-                        if boss_3_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_3.remove(boss_3)
-            
+                    
             # Проверяем столкновение с боссом Снежный Мех 
             for boss_4 in bosses_4:
                 prev_ob_0 = nyan[0]
@@ -1025,11 +1171,6 @@ while running:
                     laser_sound.play()
                     nyans.remove(nyan)
                     boss_4_life -=2
-                    if boss_4_life < 1:
-                        boss_4_defeated = 1
-                        if boss_4_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_4.remove(boss_4)
             
             # Проверяем столкновение с боссом Чужой Мех    
             for boss_5 in bosses_5:
@@ -1040,13 +1181,7 @@ while running:
                     laser_sound.play()
                     nyans.remove(nyan)
                     boss_5_life -=2
-                    if boss_5_life < 1:
-                        boss_5_defeated = 1
-                        if boss_5_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_5.remove(boss_5)
-
-
+                    
             # Проверяем столкновение с каждым энергошаром   
             for obstacle in obstacles:
                 prev_ob_0 = obstacle[0]
@@ -1064,45 +1199,22 @@ while running:
                 nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
 
         # ---------------------- начало блока босса -----------------
-        if (timer_minutes == 1 and timer_seconds == 12) and (stage == 1):
-            boss_1_appear = 1
-            boss_5_appear = 0
-            boss_4_appear = 0
-            boss_3_appear = 0
-            boss_2_appear = 0
-            boss_death_sound.play()
-
-        if (timer_minutes == 1 and timer_seconds == 12) and (stage == 2):
-            boss_2_appear = 1
-            boss_1_appear = 0
-            boss_5_appear = 0
-            boss_4_appear = 0
-            boss_3_appear = 0
-            boss_death_sound.play()
-        
-        if (timer_minutes == 1 and timer_seconds == 12) and (stage == 3):
-            boss_3_appear = 1
-            boss_2_appear = 0
-            boss_1_appear = 0
-            boss_5_appear = 0
-            boss_4_appear = 0
-            boss_death_sound.play()
-        
-        if (timer_minutes == 1 and timer_seconds == 12) and (stage == 4):
-            boss_4_appear = 1
-            boss_5_appear = 0
-            boss_3_appear = 0
-            boss_2_appear = 0
-            boss_1_appear = 0
-            boss_death_sound.play()
-
-        if (timer_minutes == 1 and timer_seconds == 12) and (stage == 5):
-            boss_5_appear = 1
-            boss_4_appear = 0
-            boss_3_appear = 0
-            boss_2_appear = 0
-            boss_1_appear = 0
-            boss_death_sound.play()
+        if (timer_minutes == 1 and timer_seconds == 12):
+            if (stage == 1):
+                boss_1_appear, boss_5_appear, boss_4_appear, boss_3_appear, boss_2_appear = 1, 0, 0, 0, 0
+                boss_death_sound.play()
+            if (stage == 2):
+                boss_2_appear, boss_1_appear, boss_5_appear, boss_4_appear, boss_3_appear = 1, 0, 0, 0, 0
+                boss_death_sound.play()
+            if (stage == 3):
+                boss_3_appear, boss_2_appear, boss_1_appear, boss_5_appear, boss_4_appear = 1, 0, 0, 0, 0
+                boss_death_sound.play()
+            if (stage == 4):
+                boss_4_appear, boss_3_appear, boss_2_appear, boss_1_appear, boss_5_appear = 1, 0, 0, 0, 0
+                boss_death_sound.play()
+            if (stage == 5):
+                boss_5_appear, boss_4_appear, boss_3_appear, boss_2_appear, boss_1_appear = 1, 0, 0, 0, 0
+                boss_death_sound.play()
 
         # Создание босса Кибер Панк если пришло его время и он не побеждён
         if boss_1_appear == 1 and boss_1_defeated == 0:
@@ -1187,7 +1299,7 @@ while running:
                 boss_5_counter = boss_5_frequency
                 boss_5_size = random.randint(boss_5_min_size, boss_5_max_size)
                 boss_5_pos[0] = width
-                boss_5_pos[1] = height - boss_5_size - (ground_height - 1)
+                boss_5_pos[1] = height - boss_5_size - (ground_height - 64)
                 bosses_5.append(list(boss_5_pos))
             else:
                 boss_5_counter = 1
@@ -1206,7 +1318,7 @@ while running:
             exen_counter = exen_frequency
             exen_size = random.randint(exen_min_size, exen_max_size)
             exen_pos[0] = width
-            exen_pos[1] = height - exen_size - (ground_height + random.randint(200, 500))
+            exen_pos[1] = height - exen_size - (ground_height + random.randint(200, 600))
             exens.append(list(exen_pos))
         else:
             exen_counter -= 1
@@ -1221,13 +1333,69 @@ while running:
                 nyan_particle_pos = [exen[0], exen[1] + 10]
                 nyan_particle_img = pygame.transform.scale(nyan_particle_image, (nyan_particle_size, nyan_particle_size))
                 nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
-            
-
             if check_collision_exen(player_pos, exen):
                     lives += 1
                     cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
                     new_life_sound.play()
                     exens.remove(exen)
+
+        # С какого момента начинают вылетать дроны типа 2
+        if timer_minutes==00 and timer_seconds == 30 and exen_b_counter < 0:
+            exen_b_counter = 0
+
+        # Обновление щита
+        if (timer_seconds == 20 or timer_seconds == 40 or timer_seconds == 0) and (g_shield == 1 and g_shield_switch == 0):
+            g_shield_switch = 1
+            shield_on_sound.play()
+
+        # Создание допэнергии с заданной частотой
+        if exen_b_counter == 0:
+            exen_b_frequency = random.randint(500, 1000)
+            exen_b_counter = exen_b_frequency
+            exen_b_size = random.randint(exen_b_min_size, exen_b_max_size)
+            exen_b_pos[0] = width
+            exen_b_pos[1] = height - exen_b_size - (ground_height + random.randint(200, 500))
+            exens_b.append(list(exen_b_pos))
+        else:
+            exen_b_counter -= 1
+        # Обновление позиций допэнергии и удаление вышедших за границу экрана
+        for exen_b in exens_b:
+            exen_b[0] -= exen_b_speed
+            if exen_b[0] + exen_b_max_size < 0:
+                exens_b.remove(exen_b)
+            else:
+            # Добавление частицы следа
+                nyan_particle_size = random.randint(8, 10)
+                nyan_particle_pos = [exen_b[0], exen_b[1] + 10]
+                nyan_particle_img = pygame.transform.scale(nyan_particle_image_2, (nyan_particle_size, nyan_particle_size))
+                nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
+            if check_collision_exen_b(player_pos, exen_b):
+                    #Логика выбора бонусного баффа
+                    sel_bonus = random.randint(1,4)
+
+                    if sel_bonus == 1 and g_shield == 0:
+                        g_shield = 1
+                        g_shield_switch = 1
+                    
+                    if sel_bonus == 2 and big_shot == 0:
+                        big_shot = 1
+                        current_size_shot = 32
+                        shot_img = shot_img_2
+
+                    if sel_bonus == 3 and g_rockets == 0: g_rockets = 1
+
+                    if sel_bonus == 4 and g_obst_ex == 0: g_obst_ex = 1
+
+                    if big_shot == 1 or g_shield == 1:
+                        lives += 2
+
+                                       
+                    
+                    
+                        
+                    cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                    new_life_sound.play()
+                    exens_b.remove(exen_b)
             
 
         # Создание танков с заданной частотой
@@ -1250,7 +1418,8 @@ while running:
                     score -= 1
                     
             if check_collision_tank(player_pos, tank):
-                lives -= 1
+                if g_shield == 1 and g_shield_switch == 0: lives -= 1
+                if g_shield == 0: lives -= 1
                 if lives == 0:
                     cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
                     collision_sound.play()
@@ -1290,7 +1459,7 @@ while running:
                 if ((score-1) % 10) == 0:
                     new_life_sound.play()
                     new_life_sound.set_volume(0.4)
-                    lives +=1
+                    lives += 1
                 # На 50 очках сброс интенсивности и замена спрайта
                 if (score == 50):
                     darkened_data = (data * 0.6)
@@ -1344,80 +1513,52 @@ while running:
                             winner = 1
                         else:
                             winner = 0
-                            bosses_1.remove(boss_1)
+                            
                     if (stage == 2):
                         if (boss_2_defeated == 1):
                             winner = 1
                         else:
                             winner = 0
-                            bosses_2.remove(boss_2)
+                            
                     if (stage == 3):
                         if (boss_3_defeated == 1):
                             winner = 1
                         else:
                             winner = 0
-                            bosses_3.remove(boss_3)
+                            
                     if (stage == 4):
                         if (boss_4_defeated == 1):
                             winner = 1
                         else:
                             winner = 0
-                            bosses_4.remove(boss_4)
+                            
                     if (stage == 5):
                         if (boss_5_defeated == 1):
                             winner = 1
                         else:
                             winner = 0
-                            bosses_5.remove(boss_5)
-                    boss_1_appear = 0
-                    boss_1_counter = 0
-                    boss_1_defeated = 0
-                    boss_2_appear = 0
-                    boss_2_counter = 0
-                    boss_2_defeated = 0
-                    boss_3_appear = 0
-                    boss_3_counter = 0
-                    boss_3_defeated = 0
-                    boss_4_appear = 0
-                    boss_4_counter = 0
-                    boss_4_defeated = 0
-                    boss_5_appear = 0
-                    boss_5_counter = 0
-                    boss_5_defeated = 0
+                            
+                    boss_1_appear, boss_1_counter, boss_1_defeated = 0, 0, 0
+                    boss_2_appear, boss_2_counter, boss_2_defeated = 0, 0, 0
+                    boss_3_appear, boss_3_counter, boss_3_defeated = 0, 0, 0
+                    boss_4_appear, boss_4_counter, boss_4_defeated = 0, 0, 0
+                    boss_5_appear, boss_5_counter, boss_5_defeated = 0, 0, 0
                     break
         
         # Проверка столкновения игрока с препятствием
             if check_collision(player_pos, obstacle):
-                lives -= 1
+                if g_shield == 1 and g_shield_switch == 0: lives -= 1
+                if g_shield == 0: lives -= 1
                 if lives < 1:
                     cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
                     collision_sound.play()
                     game_over = True
-                    if (stage == 1) and (boss_1_defeated!=1):
-                        bosses_1.remove(boss_1)
-                    if (stage == 2) and (boss_2_defeated!=1):
-                        bosses_2.remove(boss_2)
-                    if (stage == 3) and (boss_3_defeated!=1):
-                        bosses_3.remove(boss_3)
-                    if (stage == 4) and (boss_4_defeated!=1):
-                        bosses_4.remove(boss_4)
-                    if (stage == 5) and (boss_5_defeated!=1):
-                        bosses_5.remove(boss_5)
-                    boss_1_appear = 0
-                    boss_1_counter = 0
-                    boss_1_defeated = 0
-                    boss_2_appear = 0
-                    boss_2_counter = 0
-                    boss_2_defeated = 0
-                    boss_3_appear = 0
-                    boss_3_counter = 0
-                    boss_3_defeated = 0
-                    boss_4_appear = 0
-                    boss_4_counter = 0
-                    boss_4_defeated = 0
-                    boss_5_appear = 0
-                    boss_5_counter = 0
-                    boss_5_defeated = 0
+                   
+                    boss_1_appear, boss_1_counter, boss_1_defeated = 0, 0, 0
+                    boss_2_appear, boss_2_counter, boss_2_defeated = 0, 0, 0
+                    boss_3_appear, boss_3_counter, boss_3_defeated = 0, 0, 0
+                    boss_4_appear, boss_4_counter, boss_4_defeated = 0, 0, 0
+                    boss_5_appear, boss_5_counter, boss_5_defeated = 0, 0, 0
                     break
                 else:
                     cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
@@ -1453,10 +1594,16 @@ while running:
                 shots.remove(shot)
             else:
                 # Добавление частицы следа
-                nyan_particle_size = random.randint(3, 5)
-                nyan_particle_pos = [shot[0], shot[1] + 6]
-                nyan_particle_img = pygame.transform.scale(nyan_particle_image_2, (nyan_particle_size, nyan_particle_size))
-                nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
+                if big_shot == 0:
+                    nyan_particle_size = random.randint(3, 5)
+                    nyan_particle_pos = [shot[0], shot[1] + (current_size_shot / 2)]
+                    nyan_particle_img = pygame.transform.scale(nyan_particle_image_2, (nyan_particle_size, nyan_particle_size))
+                    nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
+                if big_shot == 1:
+                    nyan_particle_size = random.randint(3, 5)
+                    nyan_particle_pos = [shot[0], shot[1] + (current_size_shot / 2)]
+                    nyan_particle_img = pygame.transform.scale(nyan_particle_image, (nyan_particle_size, nyan_particle_size))
+                    nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
 
         # Проверка столкновений выстрелов с препятствиями
         for shot in shots[:]:
@@ -1464,11 +1611,9 @@ while running:
                 # Прямоугольники для проверок столкновений
                 shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
                 obstacle_rect = pygame.Rect(obstacle[0], obstacle[1], 30, 30)
-                shot_pr_0 = shot_pos[0]
-                shot_pr_1 = shot_pos[1]
                 if shot_rect.colliderect(obstacle_rect):  # Проверка на столкновение
                     score = score + 1
-                    ocparticles = [ocParticle(shot_pr_0, shot_pr_1) for _ in range(ocparticle_count)]
+                    ocparticles = [ocParticle(shot[0], shot[1]) for _ in range(ocparticle_count)]
                     new_score_sound.play()
                     shots.remove(shot)
                     obstacles.remove(obstacle)
@@ -1479,10 +1624,8 @@ while running:
                 # Прямоугольники для проверок столкновений
                 shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
                 tank_rect = pygame.Rect(tank[0], tank[1], 128, 64)
-                shot_pr_0 = shot_pos[0]
-                shot_pr_1 = shot_pos[1]
                 if shot_rect.colliderect(tank_rect):  # Проверка на столкновение
-                    ocparticles = [ocParticle(shot_pr_0, shot_pr_1) for _ in range(ocparticle_count)]
+                    ocparticles = [ocParticle(shot[0], shot[1]) for _ in range(ocparticle_count)]
                     laser_sound.play()
                     shots.remove(shot)
                     tanks.remove(tank)
@@ -1493,18 +1636,14 @@ while running:
                 # Прямоугольники для проверок столкновений
                 shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
                 boss_1_rect = pygame.Rect(boss_1[0], boss_1[1], 256, 256)
-                shot_pr_0 = shot_pos[0]
-                shot_pr_1 = shot_pos[1]
                 if shot_rect.colliderect(boss_1_rect):  # Проверка на столкновение
-                    ocparticles = [ocParticle(shot_pr_0, shot_pr_1) for _ in range(ocparticle_count)]
+                    ocparticles = [ocParticle(shot[0], shot[1]) for _ in range(ocparticle_count)]
                     laser_sound.play()
                     shots.remove(shot)
-                    boss_1_life -=1
-                    if boss_1_life < 1:
-                        boss_1_defeated = 1
-                        if boss_1_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_1.remove(boss_1)
+                    if big_shot == 0:
+                        boss_1_life -=1
+                    if big_shot == 1:
+                        boss_1_life -=2
                     break
         
         for shot in shots[:]:
@@ -1512,18 +1651,14 @@ while running:
                 # Прямоугольники для проверок столкновений
                 shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
                 boss_2_rect = pygame.Rect(boss_2[0], boss_2[1], 256, 256)
-                shot_pr_0 = shot_pos[0]
-                shot_pr_1 = shot_pos[1]
                 if shot_rect.colliderect(boss_2_rect):  # Проверка на столкновение
-                    ocparticles = [ocParticle(shot_pr_0, shot_pr_1) for _ in range(ocparticle_count)]
+                    ocparticles = [ocParticle(shot[0], shot[1]) for _ in range(ocparticle_count)]
                     laser_sound.play()
                     shots.remove(shot)
-                    boss_2_life -=1
-                    if boss_2_life < 1:
-                        boss_2_defeated = 1
-                        if boss_2_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_2.remove(boss_2)
+                    if big_shot == 0:
+                        boss_2_life -=1
+                    if big_shot == 1:
+                        boss_2_life -=2
                     break
         
         for shot in shots[:]:
@@ -1531,18 +1666,14 @@ while running:
                 # Прямоугольники для проверок столкновений
                 shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
                 boss_3_rect = pygame.Rect(boss_3[0], boss_3[1], 256, 256)
-                shot_pr_0 = shot_pos[0]
-                shot_pr_1 = shot_pos[1]
                 if shot_rect.colliderect(boss_3_rect):  # Проверка на столкновение
-                    ocparticles = [ocParticle(shot_pr_0, shot_pr_1) for _ in range(ocparticle_count)]
+                    ocparticles = [ocParticle(shot[0], shot[1]) for _ in range(ocparticle_count)]
                     laser_sound.play()
                     shots.remove(shot)
-                    boss_3_life -=1
-                    if boss_3_life < 1:
-                        boss_3_defeated = 1
-                        if boss_3_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_3.remove(boss_3)
+                    if big_shot == 0:
+                        boss_3_life -=1
+                    if big_shot == 1:
+                        boss_3_life -=2
                     break
         
         for shot in shots[:]:
@@ -1550,18 +1681,14 @@ while running:
                 # Прямоугольники для проверок столкновений
                 shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
                 boss_4_rect = pygame.Rect(boss_4[0], boss_4[1], 256, 256)
-                shot_pr_0 = shot_pos[0]
-                shot_pr_1 = shot_pos[1]
                 if shot_rect.colliderect(boss_4_rect):  # Проверка на столкновение
-                    ocparticles = [ocParticle(shot_pr_0, shot_pr_1) for _ in range(ocparticle_count)]
+                    ocparticles = [ocParticle(shot[0], shot[1]) for _ in range(ocparticle_count)]
                     laser_sound.play()
                     shots.remove(shot)
-                    boss_4_life -=1
-                    if boss_4_life < 1:
-                        boss_4_defeated = 1
-                        if boss_4_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_4.remove(boss_4)
+                    if big_shot == 0:
+                        boss_4_life -=1
+                    if big_shot == 1:
+                        boss_4_life -=2
                     break
         
         for shot in shots[:]:
@@ -1569,18 +1696,14 @@ while running:
                 # Прямоугольники для проверок столкновений
                 shot_rect = pygame.Rect(shot[0], shot[1], 16, 16)
                 boss_5_rect = pygame.Rect(boss_5[0], boss_5[1], 256, 256)
-                shot_pr_0 = shot_pos[0]
-                shot_pr_1 = shot_pos[1]
                 if shot_rect.colliderect(boss_5_rect):  # Проверка на столкновение
-                    ocparticles = [ocParticle(shot_pr_0, shot_pr_1) for _ in range(ocparticle_count)]
+                    ocparticles = [ocParticle(shot[0], shot[1]) for _ in range(ocparticle_count)]
                     laser_sound.play()
                     shots.remove(shot)
-                    boss_5_life -=1
-                    if boss_5_life < 1:
-                        boss_5_defeated = 1
-                        if boss_5_defeated == 1:
-                            boss_death_sound.play()
-                            bosses_5.remove(boss_5)
+                    if big_shot == 0:
+                        boss_5_life -=1
+                    if big_shot == 1:
+                        boss_5_life -=2
                     break
 
         # Отрисовка выстрелов
@@ -1597,6 +1720,23 @@ while running:
         for ground_tile in ground_tiles:
             screen.blit(ground_tile[0], ground_tile[1])
 
+         # Обновление координат нейтральных частиц
+        for i, particle in enumerate(particles):
+            x, y = particle
+            speed = speeds[i]
+            x -= speed
+            if x < 0:
+                x = width
+            particles[i] = (x, y)
+    
+        # Отрисовка нейтральных частиц
+        for particle in particles:
+            x, y = particle
+            pygame.draw.circle(screen, (p_pr, p_pg, p_pb), (x, y), random.randint(1, 2))
+
+               
+        pass
+
         # Логика изменения размера
         if resizing:
             current_size += resize_speed
@@ -1607,9 +1747,9 @@ while running:
             elif current_size < obstacle_min_size:  # Вернуться к минимальному размеру
                 resize_speed = -resize_speed
 
-            if current_size_shot > wanted_size_shot:  # Например, максимальный размер 100 пикселей
+            if current_size_shot == wanted_size_shot:  # Например, максимальный размер 100 пикселей
                 resize_speed_shot = -resize_speed_shot
-            elif current_size_shot < 16:  # Вернуться к минимальному размеру
+            elif current_size_shot != 16:  # Вернуться к минимальному размеру
                 resize_speed_shot = -resize_speed_shot
         
         obstacle_img_sized = resize_image(obstacle_img, (current_size, current_size))
@@ -1634,41 +1774,65 @@ while running:
         # Отрисовка допэнергии
         for exen in exens:
             screen.blit(exen_img, exen)
+        
+        # Отрисовка баффов
+        for exen_b in exens_b:
+            screen.blit(exen_b_img, exen_b)
+
 
         # Отрисовка босса Кибер Панк
         for boss_1 in bosses_1:
-            if boss_1_state == 0:
-               screen.blit(boss_1_1_img, boss_1)
-            if boss_1_state == 1:
-               screen.blit(boss_1_2_img, boss_1)                          
+                if boss_1_state == 0:
+                    if boss_1_life < 5:
+                        screen.blit(boss_1_3_alpha_img, boss_1)
+                    else:
+                        screen.blit(boss_1_1_alpha_img, boss_1)
+                if boss_1_state == 1:
+                    if boss_1_life < 5:
+                        screen.blit(boss_1_4_alpha_img, boss_1)
+                    else:
+                        screen.blit(boss_1_2_alpha_img, boss_1)
 
         # Отрисовка босса Болотный Мех
         for boss_2 in bosses_2:
             if boss_2_state == 0:
-               screen.blit(boss_2_1_img, boss_2)
+                if boss_2_life < 5:
+                    screen.blit(boss_2_3_alpha_img, boss_2)
+                else:
+                    screen.blit(boss_2_1_alpha_img, boss_2)
             if boss_2_state == 1:
-               screen.blit(boss_2_2_img, boss_2)  
+                if boss_2_life < 5:
+                    screen.blit(boss_2_4_alpha_img, boss_2)
+                else:
+                    screen.blit(boss_2_2_alpha_img, boss_2)
         
         # Отрисовка босса Белый Птиц
         for boss_3 in bosses_3:
             if boss_3_state == 0:
-               screen.blit(boss_3_1_img, boss_3)
+                if boss_3_life < 5:
+                    screen.blit(boss_3_3_alpha_img, boss_3)
+                else:
+                    screen.blit(boss_3_1_alpha_img, boss_3)
             if boss_3_state == 1:
-               screen.blit(boss_3_2_img, boss_3)
+                if boss_3_life < 5:
+                    screen.blit(boss_3_4_alpha_img, boss_3)
+                else:
+                    screen.blit(boss_3_2_alpha_img, boss_3)
         
         # Отрисовка босса Снежный Мех
         for boss_4 in bosses_4:
             if boss_4_state == 0:
-               screen.blit(boss_4_1_img, boss_4)
+                if boss_4_life < 5:
+                    screen.blit(boss_4_3_alpha_img, boss_4)
+                else:
+                    screen.blit(boss_4_1_alpha_img, boss_4)
             if boss_4_state == 1:
-               screen.blit(boss_4_2_img, boss_4) 
+                if boss_4_life < 5:
+                    screen.blit(boss_4_4_alpha_img, boss_4)
+                else:
+                    screen.blit(boss_4_2_alpha_img, boss_4)
         
-        # Отрисовка босса Чужой Мех
-        for boss_5 in bosses_5:
-            if boss_5_state == 0:
-               screen.blit(boss_5_1_img, boss_5)
-            if boss_5_state == 1:
-               screen.blit(boss_5_2_img, boss_5)  
+        
 
         # Отрисовка препятствий
         for obstacle in obstacles:
@@ -1676,7 +1840,29 @@ while running:
 
         # Отрисовка танков
         for tank in tanks:
-            screen.blit(tank_img, tank)    
+            screen.blit(tank_img, tank)
+
+        # Отрисовка босса Чужой Мех
+        for boss_5 in bosses_5:
+            if boss_5_state == 0:
+                if boss_5_life < 5:
+                    screen.blit(boss_5_3_alpha_img, boss_5)
+                else:
+                        screen.blit(boss_5_1_alpha_img, boss_5)
+            if boss_5_state == 1:
+                if boss_5_life < 5:
+                    screen.blit(boss_5_4_alpha_img, boss_5)
+                else:
+                    screen.blit(boss_5_2_alpha_img, boss_5)
+        #=========================== Частицы на первом плане =========================
+        for cparticle in cparticles:
+            cparticle.move()
+            cparticle.draw(screen)
+
+        for ocparticle in ocparticles:
+            ocparticle.move()
+            ocparticle.draw(screen)
+        #=============================================================================
 
         if shield_ready == 1:
             screen.blit(interface_img_shield, (790-30, 40))
@@ -1686,76 +1872,149 @@ while running:
             screen.blit(interface_img_rocket, (720-30, 40))
         if bomb_ready == 1:
             screen.blit(obstacle_img_ex, (685-30, 40))
-
-        if obstacle_state == 1:
-            obstacle_img = obstacle_img_ex_2
-            if tiktak == 20:
-                obstacles.clear()
-                obstacle_img = obstacle_img_prev
-                obstacle_state = 0
+        
+        if g_shield == 1:
+            screen.blit(interface_img_g_shield, (10, 40))
+        if big_shot == 1:
+            screen.blit(interface_img_big_shot, (45, 40))
+        if g_rockets == 1:
+            screen.blit(interface_img_g_rocket, (80, 40))
+        if g_obst_ex == 1:
+            screen.blit(g_obstacle_img_ex, (115, 40))
 
         # Тик так для анимации
         tiktak += 1
         if tiktak > 30:
             tiktak = 0
 
+
+        if obstacle_state == 1:
+            obstacle_img = obstacle_img_ex_2
+            if tiktak == 15:
+                if g_obst_ex == 1:
+                    if len(obstacles) > 0:
+                        ex_lives = round(len(obstacles) / 10)
+                        lives = lives + ex_lives
+                        print(ex_lives)
+                    score = score + len(obstacles)
+                obstacles.clear()
+                obstacle_img = obstacle_img_prev
+                obstacle_state = 0
+
+
         if tiktak == 1:
-            if boss_1_state == 0:
-                boss_1_state = 1
-            if boss_2_state == 0:
-                boss_2_state = 1
-            if boss_3_state == 0:
-                boss_3_state = 1
-            if boss_4_state == 0:
-                boss_4_state = 1
-            if boss_5_state == 0:
-                boss_5_state = 1
+            if boss_1_state == 0: boss_1_state = 1
+            if boss_2_state == 0: boss_2_state = 1
+            if boss_3_state == 0: boss_3_state = 1
+            if boss_4_state == 0: boss_4_state = 1
+            if boss_5_state == 0: boss_5_state = 1
                 
         if tiktak == 15:
-            if boss_1_state == 1:
-                boss_1_state = 0
-            if boss_2_state == 1:
-                boss_2_state = 0
-            if boss_3_state == 1:
-                boss_3_state = 0
-            if boss_4_state == 1:
-                boss_4_state = 0
-            if boss_5_state == 1:
-                boss_5_state = 0
-           
+            if boss_1_state == 1: boss_1_state = 0
+            if boss_2_state == 1: boss_2_state = 0
+            if boss_3_state == 1: boss_3_state = 0
+            if boss_4_state == 1: boss_4_state = 0
+            if boss_5_state == 1: boss_5_state = 0
+        
+        if tiktak == 16 and winner !=1:
+            if boss_1_defeated == 0 and stage == 1 and not game_over:
+                if boss_1_life < 1:
+                    boss_1_1_alpha_img, new_alpha = decrease_alpha(boss_1_1_alpha_img)
+                    boss_1_2_alpha_img, new_alpha = decrease_alpha(boss_1_2_alpha_img)
+                    boss_1_3_alpha_img, new_alpha = decrease_alpha(boss_1_3_alpha_img)
+                    boss_1_4_alpha_img, new_alpha = decrease_alpha(boss_1_4_alpha_img)
+                    if (new_alpha < 60):
+                        boss_1_defeated = 1
+                    if boss_1_defeated == 1:
+                        cparticles = [cParticle(boss_1_pos[0]-128, boss_1_pos[1]+128) for _ in range(cparticle_count)]
+                        boss_death_sound.play()
+                        bosses_1.remove(boss_1)
+
+            if boss_2_defeated == 0 and stage == 2 and not game_over:
+                if boss_2_life < 1:
+                    boss_2_1_alpha_img, new_alpha = decrease_alpha(boss_2_1_alpha_img)
+                    boss_2_2_alpha_img, new_alpha = decrease_alpha(boss_2_2_alpha_img)
+                    boss_2_3_alpha_img, new_alpha = decrease_alpha(boss_2_3_alpha_img)
+                    boss_2_4_alpha_img, new_alpha = decrease_alpha(boss_2_4_alpha_img)
+                    if (new_alpha < 60):
+                        boss_2_defeated = 1
+                    if boss_2_defeated == 1:
+                        cparticles = [cParticle(boss_2_pos[0]-128, boss_2_pos[1]+128) for _ in range(cparticle_count)]
+                        boss_death_sound.play()
+                        bosses_2.remove(boss_2)
+            if boss_3_defeated == 0 and stage == 3 and not game_over:
+                if boss_3_life < 1:
+                    boss_3_1_alpha_img, new_alpha = decrease_alpha(boss_3_1_alpha_img)
+                    boss_3_2_alpha_img, new_alpha = decrease_alpha(boss_3_2_alpha_img)
+                    boss_3_3_alpha_img, new_alpha = decrease_alpha(boss_3_3_alpha_img)
+                    boss_3_4_alpha_img, new_alpha = decrease_alpha(boss_3_4_alpha_img)
+                    if (new_alpha < 60):
+                        boss_3_defeated = 1
+                    if boss_3_defeated == 1:
+                        cparticles = [cParticle(boss_3_pos[0]-128, boss_3_pos[1]+128) for _ in range(cparticle_count)]
+                        boss_death_sound.play()
+                        bosses_3.remove(boss_3)
+            if boss_4_defeated == 0 and stage == 4 and not game_over:
+                if boss_4_life < 1:
+                    boss_4_1_alpha_img, new_alpha = decrease_alpha(boss_4_1_alpha_img)
+                    boss_4_2_alpha_img, new_alpha = decrease_alpha(boss_4_2_alpha_img)
+                    boss_4_3_alpha_img, new_alpha = decrease_alpha(boss_4_3_alpha_img)
+                    boss_4_4_alpha_img, new_alpha = decrease_alpha(boss_4_4_alpha_img)
+                    if (new_alpha < 60):
+                        boss_4_defeated = 1
+                    if boss_4_defeated == 1:
+                        cparticles = [cParticle(boss_4_pos[0]-128, boss_4_pos[1]+128) for _ in range(cparticle_count)]
+                        boss_death_sound.play()
+                        bosses_4.remove(boss_4)
+            if boss_5_defeated == 0 and stage == 5 and not game_over:
+                if boss_5_life < 1:
+                    boss_5_1_alpha_img, new_alpha = decrease_alpha(boss_5_1_alpha_img)
+                    boss_5_2_alpha_img, new_alpha = decrease_alpha(boss_5_2_alpha_img)
+                    boss_5_3_alpha_img, new_alpha = decrease_alpha(boss_5_3_alpha_img)
+                    boss_5_4_alpha_img, new_alpha = decrease_alpha(boss_5_4_alpha_img)
+                    if (new_alpha < 60):
+                        boss_5_defeated = 1
+                    if boss_5_defeated == 1:
+                        cparticles = [cParticle(boss_5_pos[0]-128, boss_5_pos[1]+128) for _ in range(cparticle_count)]
+                        boss_death_sound.play()
+                        bosses_5.remove(boss_5)
 
         # Смена спрайтов по таймеру каждые 10, 20 и 30 кадров
         if tiktak == 10 or tiktak == 20 or tiktak == 30:
 
             # Анимация бега
             if player_state == 0:
-                if current_img_index != 0:
-                    current_img_index = 0
+                if current_img_index != 0: current_img_index = 0
                 else:
                     current_img_index = 1
             # Анимация полёта на ранце
             if player_state == 1:
-                if current_img_index != 2:
-                    current_img_index = 2
+                if current_img_index != 2: current_img_index = 2
                 else:
                     current_img_index = 3
             # Анимация падения
             if player_state == 2:
-                if current_img_index != 4:
-                    current_img_index = 4
+                if current_img_index != 4: current_img_index = 4
                 else:
                     current_img_index = 5
             # Анимация столкновения
             if player_state == 3:
-                if current_img_index != 4:
-                    current_img_index = 4
+                if g_shield == 1 and g_shield_switch == 1:
+                    g_shield_switch = 0 
+                if current_img_index != 4: current_img_index = 4
                 else:
                     current_img_index = 5
 
         # Рендеринг изображения игрока
         screen.blit(player_imgs[current_img_index], player_pos)
-        if player_state == 3:
+
+        if player_state == 3 or (g_shield == 1 and g_shield_switch == 1):
             screen.blit(eximage, player_pos)
+            if player_state !=0:
+                nyan_particle_size = random.randint(4, 7)
+                nyan_particle_pos = [player_pos[0]+5, player_pos[1] + 30 // 2]
+                nyan_particle_img = pygame.transform.scale(nyan_particle_image_2, (nyan_particle_size, nyan_particle_size))
+                nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
         else:
             # Добавление частицы следа
             if player_state == 1:
@@ -1766,6 +2025,7 @@ while running:
     
         # Отображение текстовых сообщений при окончании игры
         if game_over:
+            bosses_1.clear(), bosses_2.clear(), bosses_3.clear(), bosses_4.clear(), bosses_5.clear()
             is_moving_right = False
             is_moving_left = False
             score_show = score
@@ -1779,8 +2039,14 @@ while running:
                 display_score(score_show)
                 display_timer(timer_minutes, timer_seconds)
                 display_lives(lives)
-                display_text("Вы проиграли. You lost :(", game_over_text_y)
-                display_text("Enter - начать заново. Enter for restart.", game_over_text_y + 30)
+                
+                if current_language == 'russian':
+                    display_text("Вы проиграли... :(", game_over_text_y)
+                    display_text("Нажмите [Enter] и начните заново.", game_over_text_y + 30)
+                if current_language == 'english':
+                    display_text("You lost... :(", game_over_text_y)
+                    display_text("Press [Enter] for restart.", game_over_text_y + 30)
+                
                 font = pygame.font.Font(None, 26)
                 display_text("Fractel " + version, game_over_text_y + 260)
                 display_text("game by Stanislav Nixman", game_over_text_y + 280)
@@ -1794,32 +2060,28 @@ while running:
                     display_score(score_show)
                     display_timer(timer_minutes, timer_seconds)
                     display_lives(lives)
-                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
-                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 30)
+                    new_stage_text(new_stage)
                     is_winner = 1
                 if (stage == 2):
                     new_stage = 3
                     display_score(score_show)
                     display_timer(timer_minutes, timer_seconds)
                     display_lives(lives)
-                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
-                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 30)
+                    new_stage_text(new_stage)
                     is_winner = 1
                 if (stage == 3):
                     new_stage = 4
                     display_score(score_show)
                     display_timer(timer_minutes, timer_seconds)
                     display_lives(lives)
-                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
-                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 30)
+                    new_stage_text(new_stage)
                     is_winner = 1
                 if (stage == 4):
                     new_stage = 5
                     display_score(score_show)
                     display_timer(timer_minutes, timer_seconds)
                     display_lives(lives)
-                    display_text("Следующий уровень (next stage) - " + str(new_stage), game_over_text_y)
-                    display_text("Enter - продолжить. Enter for continue.", game_over_text_y + 30)
+                    new_stage_text(new_stage)
                     is_winner = 1
 
                 if (stage == 5):
@@ -1827,17 +2089,24 @@ while running:
                     display_score(score_show)
                     display_timer(timer_minutes, timer_seconds)
                     display_lives(lives)
-                    display_text("Вы прошли игру! You win!", game_over_text_y)
-                    display_text("Enter - перезапуск. Enter for restart. ", game_over_text_y + 50)
+                    if current_language == 'russian':
+                        display_text("Вы прошли игру! :)", game_over_text_y)
+                        display_text("Нажмите [Enter] для перезапуска.", game_over_text_y + 50)
+                    if current_language == 'english':
+                        display_text("You win this game! :)", game_over_text_y)
+                        display_text("Press [Enter] for restart. ", game_over_text_y + 50)
                     is_winner = 1
 
         else:
             display_score(score)
             display_lives(lives)
 
-        if (timer_minutes == 00 and timer_seconds > 1 and timer_seconds < 8):
+        if (timer_minutes == 00 and timer_seconds > 0 and timer_seconds < 8):
             font = pygame.font.Font(None, 36)
-            display_text("Наберите 450 очков! Score 450 points!", game_over_text_y - 40)
+            if current_language == 'russian':
+                display_text("Наберите 450 очков!", game_over_text_y - 40)
+            if current_language == 'english':
+                display_text("Score 450 points!", game_over_text_y - 40)
           
         # Обработка ввода клавиатуры для перезапуска игры
         keys = pygame.key.get_pressed()
@@ -1855,40 +2124,35 @@ while running:
         # Отображение таймера
         display_timer(timer_minutes, timer_seconds)
 
-        # Обновление координат нейтральных частиц
-        for i, particle in enumerate(particles):
-            x, y = particle
-            speed = speeds[i]
-            x -= speed
-            if x < 0:
-                x = width
-            particles[i] = (x, y)
+       
     
-        # Отрисовка нейтральных частиц
-        for particle in particles:
-            x, y = particle
-            pygame.draw.circle(screen, (p_pr, p_pg, p_pb), (x, y), random.randint(1, 2))
-
-        for cparticle in cparticles:
-            cparticle.move()
-            cparticle.draw(screen)
-        for ocparticle in ocparticles:
-            ocparticle.move()
-            ocparticle.draw(screen)       
-        pass
-    
-    if paused:              
-        draw_text_pause(screen, "Press \"P\" to play!", 50, width // 2 - 140, height // 2 - 200)
+    if paused:
+        if current_language == 'english':
+            draw_text_pause(screen, "Press [P] to play!", 50, width // 2 - 140, height // 2 - 200)
+        if current_language == 'russian':
+            draw_text_pause(screen, "Нажмите [P] чтобы играть!", 50, width // 2 - 230, height // 2 - 200)
         font = pygame.font.Font(None, 28)
-        display_text("Управление [Controls]:", game_over_text_y + 60)
-        display_text("Вверх - прыжок. Вниз [Down] - падение [fall]", game_over_text_y + 90)
-        display_text("Влево-Вправо [Left-Right], P - пауза [pause]", game_over_text_y + 110)
-        display_text("SPACE, X, Left ALT - оружие [weapons]", game_over_text_y + 130)
-        display_text("TAB / ESC - оконный режим (toggle fullscreen).", game_over_text_y + 160)
-        display_text("Минус [Minus] - фоновая музыка [music on/off]", game_over_text_y + 180)
-        display_text("Fractel " + version, game_over_text_y + 220)
-        display_text("game by Stanislav Nixman", game_over_text_y + 240)
-        font = pygame.font.Font(None, 36)
+        
+        if current_language == 'english':
+            display_text("Controls:", game_over_text_y + 60)
+            display_text("[Up] jump. [Down] fall.", game_over_text_y + 90)
+            display_text("[Left-Right] moves horisontally. [P] pause.", game_over_text_y + 110)
+            display_text("[SPACE, X, Left ALT] weapons.", game_over_text_y + 130)
+            display_text("[TAB / ESC] fullscreen / windowed mode.", game_over_text_y + 160)
+            display_text("[Minus] music on/off, [L] RU/ENG language.", game_over_text_y + 180)
+            display_text("Fractel v" + version, game_over_text_y + 220)
+            display_text("game by Stanislav Nixman", game_over_text_y + 240)
+            font = pygame.font.Font(None, 36)
+        if current_language == 'russian':
+            display_text("Управление:", game_over_text_y + 60)
+            display_text("[Вверх] прыжок. [Вниз] падение", game_over_text_y + 90)
+            display_text("[Влево-Вправо] туда-сюда. [P] пауза.", game_over_text_y + 110)
+            display_text("[SPACE, X, Left ALT] оружие.", game_over_text_y + 130)
+            display_text("[TAB / ESC] полный экран / в окне.", game_over_text_y + 160)
+            display_text("[Минус] вкл/выкл музыку. [L] RU/ENG язык.", game_over_text_y + 180)
+            display_text("Fractel v" + version, game_over_text_y + 220)
+            display_text("игра Станислава Никсмана", game_over_text_y + 240)
+            font = pygame.font.Font(None, 36)
     
     # Обновление дисплея
     pygame.display.flip()
