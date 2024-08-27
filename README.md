@@ -12,6 +12,16 @@ RU:
 При столкновении с верхней границей экрана ранец отключается, игрок падает вниз с большой скоростью.
 Нажатие LEFT CONTROL позволяет отключать ранец и падать быстре в произвольный момент.
 
+В новом релизе появились баффы на оружие и щит!
+
+Бафф на щит (пассивка) даёт восполняемый каждые 20 секунд щит, который выдерживает 1 столкновение.
+
+Бафф на выстрел [SPACE] увеличивает область поражения и наносит больший урон боссам.
+
+Бафф на ракетный удар [X] добавляет +2 ракеты (итого пять за вызов ракетного удара)
+
+Бафф на подрыв энергошаров [LALT] теперь все взорванные энергошары засчитывает в очки и соотвественно за каждые 10 очков прибавляет 1 энергию, плюс наносит усиленный урон по боссам.
+
 Управление:
 
 Курсор LEFT/RIGHT - движение вправо-влево
@@ -66,6 +76,16 @@ If the player collides with an energy ball, he will lose one energy (life). At t
 The player, by pressing SPACE, can activate the jetpack and jump in the air.
 When colliding with the upper edge of the screen, the jetpack turns off, the player falls down at high speed.
 Pressing LEFT CONTROL allows you to turn off the jetpack and fall faster at any time.
+
+The new release features weapon and shield buffs!
+
+Shield buff (passive) gives a shield that replenishes every 20 seconds and can withstand 1 collision.
+
+Shot buff [SPACE] increases the area of ​​effect and deals more damage to bosses.
+
+Rocket strike buff [X] adds +2 rockets (total of five for calling a rocket strike)
+
+Energy ball detonation buff [LALT] now counts all detonated energy balls as points and accordingly adds 1 energy for every 10 points, plus deals increased damage to bosses.
 
 Controls:
 
