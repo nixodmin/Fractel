@@ -68,9 +68,9 @@ Pressing LEFT CONTROL allows you to turn off the jetpack and fall faster at any 
 
 Controls:
 
-Курсор LEFT/RIGHT - left-right
+LEFT/RIGHT - left-right
 
-Курсор UP/DOWN - jump-fall
+UP/DOWN - jump-fall
 
 SPACE - shot (3 shots for 1 energy)
 
@@ -78,7 +78,7 @@ LALT - destroys all energy ball on screen for 10 energy
 
 X - rocket strike
 
-Дополнительно:
+Others:
 
 TAB - FullScreen
 
