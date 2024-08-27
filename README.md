@@ -46,7 +46,7 @@ L - переключение языка RU / ENG
 
 Минус - отключить фоновую музыку
 
-Чтобы поиграть, скачайте последнюю версию https://github.com/nixodmin/Fractel/releases
+Чтобы поиграть, скачайте последнюю версию: https://github.com/nixodmin/Fractel/releases
 
 Если хотите сделать свой билд:
 
@@ -109,7 +109,7 @@ P - pause
 
 L - switch language RU / ENG
 
-To play download last version https://github.com/nixodmin/Fractel/releases
+Download last version to play: https://github.com/nixodmin/Fractel/releases
 
 How to make your own build:
 
