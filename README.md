@@ -1,6 +1,6 @@
 # Fractel
 
-![2024-08-24_06-02-06](https://github.com/user-attachments/assets/596c38ef-0bc5-4dcf-8030-bf34cb813d1b)
+![screen](https://github.com/user-attachments/assets/79bad538-e187-4df7-be7e-87c6c69d105b)
 
 RU:
 
@@ -22,6 +22,8 @@ SPACE - выстрел (три выстрела за 1 энергию)
 
 LALT - подрыв всех энергошаров на экране за 10 энергии
 
+X - ракетный удар
+
 Дополнительно:
 
 TAB - переход в FullScreen
@@ -30,6 +32,9 @@ ESC - возврат в оконный режим
 
 P - пауза
 
+L - переключение языка RU / ENG
+
+Минус - отключить фоновую музыку
 Чтобы поиграть, скачайте последнюю версию https://github.com/nixodmin/Fractel/releases
 
 Если хотите сделать свой билд:
@@ -71,6 +76,8 @@ SPACE - shot (3 shots for 1 energy)
 
 LALT - destroys all energy ball on screen for 10 energy
 
+X - rocket strike
+
 Дополнительно:
 
 TAB - FullScreen
@@ -78,6 +85,8 @@ TAB - FullScreen
 ESC - return to widowed mode
 
 P - pause
+
+L - switch language RU / ENG
 
 To play download last version https://github.com/nixodmin/Fractel/releases
 
