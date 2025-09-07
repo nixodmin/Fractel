@@ -5,7 +5,7 @@ import random
 import time
 import math
 
-version = "1.0.6"
+version = "1.0.7"
 
 pygame.init()
 pygame.mixer.init()
@@ -178,6 +178,90 @@ boss_1_speed = 6
 bosses_1 = []
 boss_1_appear = 0
 boss_1_life = 30
+
+# Добавляем параметры для огненных шаров босса
+boss_1_fireballs = []  # Список огненных шаров
+boss_1_fireball_timer = 0  # Таймер для стрельбы
+boss_1_fireball_cooldown = 30  # Задержка между выстрелами (в кадрах, уменьшена с 60 до 30)
+
+# Добавляем параметры для зеленых бомб босса 2
+boss_2_bombs = []  # Список зеленых бомб
+boss_2_bomb_timer = 0  # Таймер для стрельбы
+boss_2_bomb_cooldown = 60  # Задержка между выстрелами
+
+# Добавляем параметры для лазеров и самонаводящихся крестов босса 3
+boss_3_lasers = []  # Список лазеров
+boss_3_laser_timer = 0  # Таймер для стрельбы лазерами
+boss_3_laser_cooldown = 30  # Задержка между выстрелами лазерами (в кадрах)
+
+boss_3_crosses = []  # Список самонаводящихся крестов
+boss_3_cross_timer = 0  # Таймер для запуска крестов
+boss_3_cross_cooldown = 180  # Задержка между запусками крестов (180 кадров = 3 секунды)
+
+# Добавляем параметры для красных столбов босса 4
+boss_4_columns = []  # Список красных столбов
+boss_4_column_timer = 0  # Таймер для стрельбы столбами
+boss_4_column_cooldown = 60  # Задержка между выстрелами (60 кадров = 2 секунды)
+
+# Параметры для атак босса 5
+boss_5_attack_timer = 0  # Таймер для атак босса 5 (120 кадров = 4 секунды)
+
+def reset_game():
+    global first_play, winner, x_offset, player_pos, score, lives, second_chance, bomb_ready, gun_ready, shield_ready, rockets_ready, running, is_jumping, is_moving_left, is_moving_right, game_over, game_over_text_y, obstacle_frequency, obstacle_counter, obstacles, tank_frequency, tank_counter, exen_counter, exen_b_counter, nyan_counter, tanks, exens, exens_b, nyans, nyan_particles, boss_1_counter, boss_1_defeated, boss_1_speed, bosses_1, boss_1_appear, boss_1_life, boss_1_fireballs, boss_1_fireball_timer, boss_2_bombs, boss_2_bomb_timer, boss_3_lasers, boss_3_laser_timer, boss_3_crosses, boss_3_cross_timer, boss_5_attack_timer
+    first_play = 1
+    winner = 0
+    x_offset = 0
+    player_pos = [width / 2, height - player_size - (ground_height + 4)]
+    score = 1
+    lives = 3000
+    second_chance = 0
+    bomb_ready = 0
+    gun_ready = 1
+    shield_ready = 1
+    rockets_ready = 0
+    running = True
+    is_jumping = False
+    move_velocity = 2
+    is_moving_left = True
+    is_moving_right = False
+    game_over = False
+    game_over_text_y = height // 2 - 120
+    obstacle_frequency = 0
+    obstacle_counter = 0
+    obstacles = []
+    tank_frequency = 0
+    tank_counter = 0
+    exen_counter = 0
+    exen_b_counter = -1
+    nyan_counter = 0
+    tanks = []
+    exens = []
+    exens_b = []
+    nyans = []
+    nyan_particles = []
+    boss_1_counter = 0
+    boss_1_defeated = 0
+    boss_1_speed = 6
+    bosses_1 = []
+    boss_1_appear = 0
+    boss_1_life = 30
+
+    # Сброс огненных шаров босса
+    boss_1_fireballs.clear()
+    boss_1_fireball_timer = 0
+
+    # Сброс зеленых бомб босса 2
+    boss_2_bombs.clear()
+    boss_2_bomb_timer = 0
+    
+    # Сброс лазеров и крестов босса 3
+    boss_3_lasers.clear()
+    boss_3_laser_timer = 0
+    boss_3_crosses.clear()
+    boss_3_cross_timer = 0
+
+boss_3_cross_timer = 0  # Таймер для запуска крестов
+boss_3_cross_cooldown = 180  # Задержка между запусками крестов (180 кадров = 3 секунды)
 
 boss_2_counter = 0
 boss_2_defeated = 0
@@ -585,6 +669,21 @@ def draw_text_pause(surface, text, size, x, y):
     text_surface = font.render(text, True, RED)
     surface.blit(text_surface, (x, y))
 
+# Функция для отрисовки полоски здоровья босса
+def draw_boss_health_bar(x, y, current_health, max_health, bar_width=200, bar_height=10):
+    # Рассчитываем ширину полоски в зависимости от текущего здоровья
+    health_ratio = max(0, current_health / max_health)
+    current_bar_width = int(bar_width * health_ratio)
+    
+    # Рисуем фон полоски (красный)
+    pygame.draw.rect(screen, (255, 0, 0), (x, y, bar_width, bar_height))
+    
+    # Рисуем текущее здоровье (зеленый)
+    pygame.draw.rect(screen, (0, 255, 0), (x, y, current_bar_width, bar_height))
+    
+    # Рисуем рамку
+    pygame.draw.rect(screen, (255, 255, 255), (x, y, bar_width, bar_height), 2)
+
 # Функции для отображения счета, жизней и текстовых сообщений
 def display_score(score):
     if current_language == 'russian':
@@ -613,8 +712,54 @@ def reset_game(new_stage, is_winner):
         boss_3_1_alpha_img, boss_3_2_alpha_img, boss_3_3_alpha_img, boss_3_4_alpha_img,\
         boss_4_1_alpha_img, boss_4_2_alpha_img, boss_4_3_alpha_img, boss_4_4_alpha_img,\
         boss_5_1_alpha_img, boss_5_2_alpha_img, boss_5_3_alpha_img, boss_5_4_alpha_img,\
-        g_shield, g_shield_switch, g_rockets, g_rockets_shell, g_obst_ex
+        g_shield, g_shield_switch, g_rockets, g_rockets_shell, g_obst_ex,\
+        boss_1_fireballs, boss_1_fireball_timer,\
+        boss_2_bombs, boss_2_bomb_timer,\
+        boss_3_lasers, boss_3_laser_timer, boss_3_crosses, boss_3_cross_timer,\
+        boss_4_columns, boss_4_column_timer,\
+        boss_5_attack_timer,\
+        boss_1_appear, boss_1_counter, boss_1_defeated, bosses_1,\
+        boss_2_appear, boss_2_counter, boss_2_defeated, bosses_2,\
+        boss_3_appear, boss_3_counter, boss_3_defeated, bosses_3,\
+        boss_4_appear, boss_4_counter, boss_4_defeated, bosses_4,\
+        boss_5_appear, boss_5_counter, boss_5_defeated, bosses_5
     
+    # Сброс всех списков боссов
+    bosses_1.clear()
+    bosses_2.clear()
+    bosses_3.clear()
+    bosses_4.clear()
+    bosses_5.clear()
+    
+    # Сброс всех флагов и счетчиков боссов
+    boss_1_appear, boss_1_counter, boss_1_defeated = 0, 0, 0
+    boss_2_appear, boss_2_counter, boss_2_defeated = 0, 0, 0
+    boss_3_appear, boss_3_counter, boss_3_defeated = 0, 0, 0
+    boss_4_appear, boss_4_counter, boss_4_defeated = 0, 0, 0
+    boss_5_appear, boss_5_counter, boss_5_defeated = 0, 0, 0
+
+    # Сброс огненных шаров босса 1
+    boss_1_fireballs.clear()
+    boss_1_fireball_timer = 0
+    
+    # Сброс зеленых бомб босса 2
+    boss_2_bombs.clear()
+    boss_2_bomb_timer = 0
+    
+    # Сброс лазеров и крестов босса 3
+    boss_3_lasers.clear()
+    boss_3_laser_timer = 0
+    boss_3_crosses.clear()
+    boss_3_cross_timer = 0
+
+    # Сброс красных столбов босса 4
+    boss_4_columns.clear()
+    boss_4_column_timer = 0
+    
+    # Сброс таймера атак босса 5
+    global boss_5_attack_timer
+    boss_5_attack_timer = 0
+
     boss_1_1_alpha_img.set_alpha(255), boss_1_2_alpha_img.set_alpha(255), boss_1_3_alpha_img.set_alpha(255), boss_1_4_alpha_img.set_alpha(255)
     boss_2_1_alpha_img.set_alpha(255), boss_2_2_alpha_img.set_alpha(255), boss_2_3_alpha_img.set_alpha(255), boss_2_4_alpha_img.set_alpha(255)
     boss_3_1_alpha_img.set_alpha(255), boss_3_2_alpha_img.set_alpha(255), boss_3_3_alpha_img.set_alpha(255), boss_3_4_alpha_img.set_alpha(255)
@@ -912,6 +1057,431 @@ class ocParticle:
         if self.distance <= ocmax_distance:
             pygame.draw.circle(surface, (255, 255, 255), (int(self.x), int(self.y)), self.size)
 
+# Класс для огненных шаров босса
+class Fireball:
+    def __init__(self, x, y, target_x, target_y):
+        self.x = x
+        self.y = y
+        self.size = random.randint(15, 25)
+        # Вычисляем направление к игроку
+        dx = target_x - x
+        dy = target_y - y
+        distance = math.sqrt(dx*dx + dy*dy)
+        if distance > 0:
+            self.dx = (dx / distance) * 3  # Скорость шара
+            self.dy = (dy / distance) * 3
+        else:
+            self.dx = 0
+            self.dy = 0
+        self.trail_particles = []  # Частицы следа
+        self.trail_timer = 0
+        self.pulse_timer = 0  # Таймер для пульсации ядра
+    
+    def move(self):
+        self.x += self.dx
+        self.y += self.dy
+        
+        # Обновляем таймер пульсации
+        self.pulse_timer += 0.2
+        
+        # Создаем частицы следа
+        self.trail_timer += 1
+        if self.trail_timer >= 3:  # Создаем частицы каждые 3 кадра
+            self.trail_particles.append({
+                'x': self.x + random.randint(-5, 5),
+                'y': self.y + random.randint(-5, 5),
+                'size': random.randint(2, 4),
+                'alpha': 255
+            })
+            self.trail_timer = 0
+        
+        # Обновляем частицы следа
+        for particle in self.trail_particles[:]:
+            particle['alpha'] -= 15
+            if particle['alpha'] <= 0:
+                self.trail_particles.remove(particle)
+    
+    def draw(self, surface):
+        # Рисуем внешнюю оболочку огненного шара
+        pygame.draw.circle(surface, (255, 69, 0), (int(self.x), int(self.y)), self.size)  # Оранжево-красный
+        pygame.draw.circle(surface, (255, 140, 0), (int(self.x), int(self.y)), int(self.size * 0.8))  # Оранжевый
+        
+        # Рисуем пульсирующее желтое ядро
+        pulse_factor = (math.sin(self.pulse_timer) + 1) / 2  # Значение от 0 до 1
+        core_size = int(self.size * 0.4 * (0.7 + 0.3 * pulse_factor))  # Пульсирующий размер
+        pygame.draw.circle(surface, (255, 255, 0), (int(self.x), int(self.y)), core_size)  # Желтое ядро
+        pygame.draw.circle(surface, (255, 255, 200), (int(self.x), int(self.y)), int(core_size * 0.7))  # Светло-желтое ядро
+        
+        # Рисуем частицы следа
+        for particle in self.trail_particles:
+            alpha = max(0, particle['alpha'])
+            if alpha > 0:
+                color = (255, int(69 * alpha / 255), 0)  # Оранжево-красный с прозрачностью
+                pygame.draw.circle(surface, color, (int(particle['x']), int(particle['y'])), particle['size'])
+
+# Класс для зеленых бомб босса 2
+class GreenBomb:
+    def __init__(self, x, y, target_x, target_y):
+        self.x = x
+        self.y = y
+        self.size = random.randint(10, 15)  # Меньше по размеру
+        
+        # Вычисляем направление к игроку
+        dx = target_x - x
+        dy = target_y - y
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        # Начальная скорость: бросаем вверх и в сторону игрока с очень высокой траекторией
+        if distance > 0:
+            # Горизонтальная скорость направлена к игроку
+            self.horizontal_speed = (dx / distance) * 6  # Увеличиваем горизонтальную скорость
+            # Вертикальная скорость вверх (очень высокая траектория)
+            self.vertical_speed = -12  # Очень сильный вертикальный импульс вверх
+        else:
+            self.horizontal_speed = 0
+            self.vertical_speed = -12
+        
+        # Гравитация
+        self.gravity = 0.4  # Увеличиваем гравитацию для выраженной дуги
+        
+        # Параметры для пульсации ядра
+        self.pulse_timer = 0
+        
+        # Таймер заморозки
+        self.freeze_timer = 0
+        self.is_frozen = False
+    
+    def move(self):
+        if not self.is_frozen:
+            # Обновляем таймер пульсации
+            self.pulse_timer += 0.2
+            
+            # Движение горизонтальное
+            self.x += self.horizontal_speed
+            
+            # Движение вертикальное с учетом гравитации
+            self.vertical_speed += self.gravity
+            self.y += self.vertical_speed
+    
+    def draw(self, surface):
+        # Рисуем внешнюю оболочку зеленой бомбы
+        pygame.draw.circle(surface, (0, 255, 0), (int(self.x), int(self.y)), self.size)  # Зеленый
+        pygame.draw.circle(surface, (0, 128, 0), (int(self.x), int(self.y)), int(self.size * 0.8))  # Темно-зеленый
+        
+        # Рисуем пульсирующее ядро
+        pulse_factor = (math.sin(self.pulse_timer) + 1) / 2  # Значение от 0 до 1
+        core_size = int(self.size * 0.4 * (0.7 + 0.3 * pulse_factor))  # Пульсирующий размер
+        pygame.draw.circle(surface, (0, 255, 128), (int(self.x), int(self.y)), core_size)  # Светло-зеленое ядро
+        pygame.draw.circle(surface, (0, 200, 100), (int(self.x), int(self.y)), int(core_size * 0.7))  # Светло-зеленое ядро
+
+# Класс для лазеров босса 3
+class Boss3Laser:
+    def __init__(self, x, y, target_x, target_y):
+        self.x = x
+        self.y = y
+        self.size = random.randint(8, 12)  # Размер шара
+        
+        # Вычисляем направление к игроку
+        dx = target_x - x
+        dy = target_y - y
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        # Скорость лазера направлена к игроку
+        if distance > 0:
+            self.speed_x = (dx / distance) * 8  # Быстрая скорость
+            self.speed_y = (dy / distance) * 8
+        else:
+            self.speed_x = 0
+            self.speed_y = 8
+        
+        # Параметры для пульсации
+        self.pulse_timer = 0
+        
+        # Параметры для следа
+        self.trail_particles = []  # Частицы следа
+        self.trail_timer = 0
+    
+    def move(self):
+        # Обновляем таймер пульсации
+        self.pulse_timer += 0.2
+        
+        # Движение лазера
+        self.x += self.speed_x
+        self.y += self.speed_y
+        
+        # Создаем частицы следа
+        self.trail_timer += 1
+        if self.trail_timer >= 2:  # Создаем частицы каждые 2 кадра
+            self.trail_particles.append({
+                'x': self.x + random.randint(-5, 5),
+                'y': self.y + random.randint(-5, 5),
+                'size': random.randint(2, 4),
+                'alpha': 255
+            })
+            self.trail_timer = 0
+        
+        # Обновляем частицы следа
+        for particle in self.trail_particles[:]:
+            particle['alpha'] -= 15
+            if particle['alpha'] <= 0:
+                self.trail_particles.remove(particle)
+    
+    def draw(self, surface):
+        # Рисуем пульсирующий белый шар
+        pulse_factor = (math.sin(self.pulse_timer) + 1) / 2  # Значение от 0 до 1
+        current_size = int(self.size * (0.8 + 0.2 * pulse_factor))  # Пульсирующий размер
+        
+        # Внешняя оболочка
+        pygame.draw.circle(surface, (200, 200, 200), (int(self.x), int(self.y)), current_size)
+        # Внутреннее ядро
+        pygame.draw.circle(surface, (255, 255, 255), (int(self.x), int(self.y)), int(current_size * 0.7))
+        # Центральное свечение
+        pygame.draw.circle(surface, (230, 230, 255), (int(self.x), int(self.y)), int(current_size * 0.4))
+        
+        # Рисуем частицы следа
+        for particle in self.trail_particles:
+            alpha = max(0, particle['alpha'])
+            if alpha > 0:
+                color = (255, 255, 255)  # Белый с прозрачностью
+                pygame.draw.circle(surface, color, (int(particle['x']), int(particle['y'])), particle['size'])
+
+# Класс для крестов босса 3
+class Boss3Cross:
+    def __init__(self, x, y, target_x, target_y):
+        self.x = x
+        self.y = y
+        self.size = random.randint(20, 30)  # Размер креста
+        
+        # Вычисляем направление к игроку
+        dx = target_x - x
+        dy = target_y - y
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        # Начальная скорость: бросаем вверх и в сторону игрока с очень высокой траекторией
+        if distance > 0:
+            # Горизонтальная скорость направлена к игроку
+            self.horizontal_speed = (dx / distance) * 6  # Увеличиваем горизонтальную скорость
+            # Вертикальная скорость вверх (очень высокая траектория)
+            self.vertical_speed = -12  # Очень сильный вертикальный импульс вверх
+        else:
+            self.horizontal_speed = 0
+            self.vertical_speed = -12
+        
+        # Гравитация
+        self.gravity = 0.4  # Увеличиваем гравитацию для выраженной дуги
+        
+        # Параметры для пульсации ядра
+        self.pulse_timer = 0
+    
+    def move(self):
+        # Обновляем таймер пульсации
+        self.pulse_timer += 0.2
+            
+        # Движение по дуге
+        self.x += self.horizontal_speed
+        self.y += self.vertical_speed
+        self.vertical_speed += self.gravity  # Гравитация тянет вниз
+
+    def draw(self, surface):
+        # Рисуем внешнюю оболочку креста
+        pygame.draw.circle(surface, (0, 255, 0), (int(self.x), int(self.y)), self.size)  # Зеленый
+        pygame.draw.circle(surface, (0, 128, 0), (int(self.x), int(self.y)), int(self.size * 0.8))  # Темно-зеленый
+        
+        # Рисуем пульсирующее ядро
+        pulse_factor = (math.sin(self.pulse_timer) + 1) / 2  # Значение от 0 до 1
+        core_size = int(self.size * 0.4 * (0.7 + 0.3 * pulse_factor))  # Пульсирующий размер
+        pygame.draw.circle(surface, (0, 255, 128), (int(self.x), int(self.y)), core_size)  # Светло-зеленое ядро
+        pygame.draw.circle(surface, (0, 200, 100), (int(self.x), int(self.y)), int(core_size * 0.7))  # Светло-зеленое ядро
+        
+        # Рисуем крест
+        center_x, center_y = self.x, self.y
+        angle = math.atan2(self.vertical_speed, self.horizontal_speed)
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+        
+        # Первая линия (горизонтальная)
+        x1 = center_x - int(self.size * cos_a)
+        y1 = center_y - int(self.size * sin_a)
+        x2 = center_x + int(self.size * cos_a)
+        y2 = center_y + int(self.size * sin_a)
+        pygame.draw.line(surface, (255, 255, 255), (x1, y1), (x2, y2), 4)
+        
+        # Вторая линия (вертикальная, перпендикулярная первой)
+        x3 = center_x - int(self.size * sin_a)
+        y3 = center_y + int(self.size * cos_a)
+        x4 = center_x + int(self.size * sin_a)
+        y4 = center_y - int(self.size * cos_a)
+        pygame.draw.line(surface, (255, 255, 255), (x3, y3), (x4, y4), 4)
+
+# Класс для красных столбов босса 4
+class Boss4Column:
+    def __init__(self, x, y, target_x):
+        self.x = x
+        self.y = y
+        self.target_x = target_x  # Позиция игрока по X, куда упадет столб
+        self.width = 6  # Ширина столба
+        self.height = 20  # Высота столба
+        self.speed_y = -10  # Скорость движения вверх
+        self.state = "rising"  # Состояние: rising (поднимается), falling (падает)
+        self.delay_timer = 0  # Таймер задержки перед падением
+        self.trail_particles = []  # Частицы следа
+        self.trail_timer = 0
+    
+    def move(self):
+        if self.state == "rising":
+            # Движение вверх
+            self.y += self.speed_y
+            
+            # Создаем частицы следа из нижнего конца
+            self.trail_timer += 1
+            if self.trail_timer >= 3:  # Создаем частицы каждые 3 кадра
+                self.trail_particles.append({
+                    'x': self.x + self.width // 2 + random.randint(-3, 3),
+                    'y': self.y + self.height + random.randint(-2, 2),
+                    'size': random.randint(2, 4),
+                    'alpha': 255
+                })
+                self.trail_timer = 0
+                
+            # Если столб вышел за верхнюю границу экрана
+            if self.y + self.height < 0:
+                self.state = "waiting"
+                self.delay_timer = 60  # 2 секунды задержки (60 кадров)
+                # Устанавливаем позицию падения над игроком
+                self.x = self.target_x
+                self.y = -self.height  # Начинаем падать сверху экрана
+                
+        elif self.state == "waiting":
+            # Ждем 2 секунды
+            self.delay_timer -= 1
+            if self.delay_timer <= 0:
+                self.state = "falling"
+                self.speed_y = 10  # Скорость падения
+                
+        elif self.state == "falling":
+            # Движение вниз
+            self.y += self.speed_y
+            
+            # Создаем частицы следа из верхнего конца
+            self.trail_timer += 1
+            if self.trail_timer >= 3:  # Создаем частицы каждые 3 кадра
+                self.trail_particles.append({
+                    'x': self.x + self.width // 2 + random.randint(-3, 3),
+                    'y': self.y + random.randint(-2, 2),
+                    'size': random.randint(2, 4),
+                    'alpha': 255
+                })
+                self.trail_timer = 0
+        
+        # Обновляем частицы следа
+        for particle in self.trail_particles[:]:
+            particle['alpha'] -= 15
+            if particle['alpha'] <= 0:
+                self.trail_particles.remove(particle)
+    
+    def draw(self, surface):
+        # Рисуем красный столб
+        pygame.draw.rect(surface, (255, 0, 0), (int(self.x), int(self.y), self.width, self.height))
+        # Рисуем свечение
+        pygame.draw.rect(surface, (255, 100, 100), (int(self.x) + 1, int(self.y) + 1, self.width - 2, self.height - 2))
+        
+        # Рисуем частицы следа
+        for particle in self.trail_particles:
+            alpha = max(0, particle['alpha'])
+            if alpha > 0:
+                color = (255, int(100 * alpha / 255), int(100 * alpha / 255))  # Красный с прозрачностью
+                pygame.draw.circle(surface, color, (int(particle['x']), int(particle['y'])), particle['size'])
+
+# ================================== Главный игровой цикл ===================================
+
+# Класс для самонаводящихся крестов босса 3
+class Boss3HomingCross:
+    def __init__(self, x, y, target_x, target_y):
+        self.x = x
+        self.y = y
+        self.size = 20  # Размер креста
+        
+        # Вычисляем направление к игроку
+        dx = target_x - x
+        dy = target_y - y
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        # Начальная скорость направлена к игроку
+        if distance > 0:
+            self.speed_x = (dx / distance) * 3  # Скорость креста
+            self.speed_y = (dy / distance) * 3
+        else:
+            self.speed_x = 0
+            self.speed_y = 3
+        
+        # Параметры для вращения
+        self.rotation_angle = 0
+        self.rotation_speed = 5  # Скорость вращения
+        
+        # Таймер заморозки
+        self.freeze_timer = 0
+        self.is_frozen = False
+    
+    def move(self, target_x, target_y):
+        if not self.is_frozen:
+            # Обновляем угол вращения
+            self.rotation_angle += self.rotation_speed
+            
+            # Самонаведение на игрока
+            dx = target_x - self.x
+            dy = target_y - self.y
+            distance = math.sqrt(dx*dx + dy*dy)
+            
+            # Корректируем направление к игроку
+            if distance > 0:
+                # Плавная корректировка направления
+                correction_x = (dx / distance) * 0.5
+                correction_y = (dy / distance) * 0.5
+                
+                self.speed_x += correction_x
+                self.speed_y += correction_y
+                
+                # Ограничиваем скорость
+                speed = math.sqrt(self.speed_x*self.speed_x + self.speed_y*self.speed_y)
+                if speed > 4:
+                    self.speed_x = (self.speed_x / speed) * 4
+                    self.speed_y = (self.speed_y / speed) * 4
+            
+            # Движение креста
+            self.x += self.speed_x
+            self.y += self.speed_y
+        else:
+            # Если крест заморозил игрока, просто уменьшаем таймер
+            self.freeze_timer -= 1
+            if self.freeze_timer <= 0:
+                self.is_frozen = False
+    
+    def draw(self, surface):
+        # Рисуем вращающийся белый крест
+        center_x = int(self.x)
+        center_y = int(self.y)
+        
+        # Преобразуем угол в радианы
+        angle_rad = math.radians(self.rotation_angle)
+        
+        # Рисуем две пересекающиеся линии под углом
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+        
+        # Первая линия (горизонтальная)
+        x1 = center_x - int(self.size * cos_a)
+        y1 = center_y - int(self.size * sin_a)
+        x2 = center_x + int(self.size * cos_a)
+        y2 = center_y + int(self.size * sin_a)
+        pygame.draw.line(surface, (255, 255, 255), (x1, y1), (x2, y2), 4)
+        
+        # Вторая линия (вертикальная, перпендикулярная первой)
+        x3 = center_x - int(self.size * sin_a)
+        y3 = center_y + int(self.size * cos_a)
+        x4 = center_x + int(self.size * sin_a)
+        y4 = center_y - int(self.size * cos_a)
+        pygame.draw.line(surface, (255, 255, 255), (x3, y3), (x4, y4), 4)
+
 # ================================== Главный игровой цикл ===================================
 while running:
     for event in pygame.event.get():
@@ -960,6 +1530,7 @@ while running:
                         gun_shell -= 1
                         if gun_shell == 0:
                             lives = lives - 1
+
                             gun_shell = 3
                     if (lives < 2) and not paused:
                         laser_empty.play()
@@ -1199,20 +1770,21 @@ while running:
                 nyan_particles.append({'pos': nyan_particle_pos, 'image': nyan_particle_img, 'alpha': 255})
 
         # ---------------------- начало блока босса -----------------
-        if (timer_minutes == 1 and timer_seconds == 12):
-            if (stage == 1):
+        # Проверяем, не пора ли боссу появиться (изменим условие для лучшей видимости)
+        if (timer_minutes >= 1 and timer_seconds >= 10) or (score >= 400):
+            if (stage == 1) and not boss_1_appear and not boss_1_defeated:
                 boss_1_appear, boss_5_appear, boss_4_appear, boss_3_appear, boss_2_appear = 1, 0, 0, 0, 0
                 boss_death_sound.play()
-            if (stage == 2):
+            if (stage == 2) and not boss_2_appear and not boss_2_defeated:
                 boss_2_appear, boss_1_appear, boss_5_appear, boss_4_appear, boss_3_appear = 1, 0, 0, 0, 0
                 boss_death_sound.play()
-            if (stage == 3):
+            if (stage == 3) and not boss_3_appear and not boss_3_defeated:
                 boss_3_appear, boss_2_appear, boss_1_appear, boss_5_appear, boss_4_appear = 1, 0, 0, 0, 0
                 boss_death_sound.play()
-            if (stage == 4):
+            if (stage == 4) and not boss_4_appear and not boss_4_defeated:
                 boss_4_appear, boss_3_appear, boss_2_appear, boss_1_appear, boss_5_appear = 1, 0, 0, 0, 0
                 boss_death_sound.play()
-            if (stage == 5):
+            if (stage == 5) and not boss_5_appear and not boss_5_defeated:
                 boss_5_appear, boss_4_appear, boss_3_appear, boss_2_appear, boss_1_appear = 1, 0, 0, 0, 0
                 boss_death_sound.play()
 
@@ -1227,15 +1799,76 @@ while running:
                 bosses_1.append(list(boss_1_pos))
             else:
                 boss_1_counter = 1
-            # Обновление позиций босса
-            boss_1_appear = 1
+            # Обновление позиций босса (исправляем логику движения)
             for boss_1 in bosses_1:
-                if boss_1_appear == 1:
+                # Босс движется влево до позиции 580, затем останавливается и остается на экране
+                if boss_1[0] > 580:
                     boss_1[0] -= boss_1_speed
-                if (boss_1_appear == 1) and (boss_1[0] < 580):
-                    boss_1_appear = 0
+                    
+                # Логика стрельбы огненными шарами (теперь работает всегда когда босс на экране)
+                boss_1_fireball_timer += 1
+                if boss_1_fireball_timer >= boss_1_fireball_cooldown:
+                    # Создаем огненный шар, направленный на игрока
+                    fireball = Fireball(boss_1[0] + 128, boss_1[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                    boss_1_fireballs.append(fireball)
+                    boss_1_fireball_timer = 0
+                    # print(f"Fireball created! Boss position: ({boss_1[0]}, {boss_1[1]}), Player position: ({player_pos[0]}, {player_pos[1]})")  # Debug output
+
         
-        # Создание босса Болотный Мех если пришло его время и он не побеждён
+        # Обновление огненных шаров босса 1 (перемещаем вне условия босса)
+        for fireball in boss_1_fireballs[:]:
+            fireball.move()
+            # Проверяем столкновение с игроком
+            if (player_pos[0] < fireball.x + fireball.size and
+                player_pos[0] + player_size > fireball.x - fireball.size and
+                player_pos[1] < fireball.y + fireball.size and
+                player_pos[1] + player_size > fireball.y - fireball.size):
+                # Игрок получает урон
+                lives -= 1
+                boss_1_fireballs.remove(fireball)
+                cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                collision_sound.play()
+                if lives <= 0:
+                    game_over = True
+                continue
+                
+            # Удаляем шары, которые вышли за границы экрана
+            if (fireball.x < -50 or fireball.x > width + 50 or 
+                fireball.y < -50 or fireball.y > height + 50):
+                boss_1_fireballs.remove(fireball)
+                continue
+
+        # Обновление зеленых бомб босса 2
+        for bomb in boss_2_bombs[:]:
+            bomb.move()
+            # Проверяем столкновение с игроком
+            if (player_pos[0] < bomb.x + bomb.size and
+                player_pos[0] + player_size > bomb.x - bomb.size and
+                player_pos[1] < bomb.y + bomb.size and
+                player_pos[1] + player_size > bomb.y - bomb.size):
+                # Бомба не наносит урон, но замораживает игрока на 2 секунды (60 кадров)
+                bomb.is_frozen = True
+                bomb.freeze_timer = 60  # Заморозка на 2 секунды (60 кадров)
+                
+                # Отключаем управление игроком на 2 секунды
+                is_moving_left = False
+                is_moving_right = False
+                move_velocity = 0
+                
+                # Создаем визуальный эффект заморозки
+                cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                collision_sound.play()
+                
+                boss_2_bombs.remove(bomb)
+                continue
+                
+            # Удаляем бомбы, которые вышли за границы экрана
+            if (bomb.x < -50 or bomb.x > width + 50 or 
+                bomb.y < -50 or bomb.y > height + 50):
+                boss_2_bombs.remove(bomb)
+                continue
+
+        # Создание босса Кибер Панк если пришло его время и он не побеждён
         if boss_2_appear == 1 and boss_2_defeated == 0:
             if (boss_2_counter == 0):
                 boss_2_frequency = 1
@@ -1246,14 +1879,30 @@ while running:
                 bosses_2.append(list(boss_2_pos))
             else:
                 boss_2_counter = 1
-            # Обновление позиций босса
-            boss_2_appear = 1
+            # Обновление позиций босса (исправляем логику движения)
             for boss_2 in bosses_2:
-                if boss_2_appear == 1:
+                # Босс движется влево до позиции 580, затем останавливается и остается на экране
+                if boss_2[0] > 580:
                     boss_2[0] -= boss_2_speed
-                if (boss_2_appear == 1) and (boss_2[0] < 580):
-                    boss_2_appear = 0
-        
+                    
+                # Логика стрельбы зелеными бомбами (теперь работает всегда когда босс на экране)
+                boss_2_bomb_timer += 1
+                if boss_2_bomb_timer >= boss_2_bomb_cooldown:
+                    # Создаем три зеленых бомбы с разными стартовыми позициями и целями для четкого разделения
+                    # Левая бомба - направлена немного левее игрока
+                    bomb_left = GreenBomb(boss_2[0] + 100, boss_2[1] + 128, player_pos[0] + player_size/2 - 30, player_pos[1] + player_size/2)
+                    boss_2_bombs.append(bomb_left)
+                    
+                    # Центральная бомба - направлена прямо в игрока
+                    bomb_center = GreenBomb(boss_2[0] + 128, boss_2[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                    boss_2_bombs.append(bomb_center)
+                    
+                    # Правая бомба - направлена немного правее игрока
+                    bomb_right = GreenBomb(boss_2[0] + 156, boss_2[1] + 128, player_pos[0] + player_size/2 + 30, player_pos[1] + player_size/2)
+                    boss_2_bombs.append(bomb_right)
+                    
+                    boss_2_bomb_timer = 0
+
         # Создание босса Белый Птиц если пришло его время и он не побеждён
         if boss_3_appear == 1 and boss_3_defeated == 0:
             if (boss_3_counter == 0):
@@ -1265,14 +1914,102 @@ while running:
                 bosses_3.append(list(boss_3_pos))
             else:
                 boss_3_counter = 1
-            # Обновление позиций босса
-            boss_3_appear = 1
+            # Обновление позиций босса (исправляем логику движения)
             for boss_3 in bosses_3:
-                if boss_3_appear == 1:
+                # Босс движется влево до позиции 580, затем останавливается и остается на экране
+                if boss_3[0] > 580:
                     boss_3[0] -= boss_3_speed
-                if (boss_3_appear == 1) and (boss_3[0] < 580):
-                    boss_3_appear = 0
-        
+                    
+                # Логика стрельбы лазерами (теперь работает всегда когда босс на экране)
+                boss_3_laser_timer += 1
+                if boss_3_laser_timer >= boss_3_laser_cooldown:
+                    # Создаем лазер, направленный на игрока
+                    laser = Boss3Laser(boss_3[0] + 128, boss_3[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                    boss_3_lasers.append(laser)
+                    boss_3_laser_timer = 0
+
+                # Логика запуска самонаводящихся крестов
+                boss_3_cross_timer += 1
+                if boss_3_cross_timer >= boss_3_cross_cooldown:
+                    # Создаем самонаводящийся крест
+                    cross = Boss3HomingCross(boss_3[0] + 128, boss_3[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                    boss_3_crosses.append(cross)
+                    boss_3_cross_timer = 0
+
+        # Обновление лазеров босса 3
+        for laser in boss_3_lasers[:]:
+            laser.move()
+            # Проверяем столкновение с игроком (для круглого лазера)
+            distance = math.sqrt((player_pos[0] + player_size/2 - laser.x)**2 + (player_pos[1] + player_size/2 - laser.y)**2)
+            if distance < (player_size/2 + laser.size):
+                # Игрок получает урон (1 единица)
+                lives -= 1
+                boss_3_lasers.remove(laser)
+                cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                collision_sound.play()
+                if lives <= 0:
+                    game_over = True
+                continue
+                
+            # Удаляем лазеры, которые вышли за границы экрана
+            if (laser.x < -50 or laser.x > width + 50 or 
+                laser.y < -50 or laser.y > height + 50):
+                boss_3_lasers.remove(laser)
+                continue
+
+        # Обновление самонаводящихся крестов босса 3
+        for cross in boss_3_crosses[:]:
+            cross.move(player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+            # Проверяем столкновение с игроком
+            if (player_pos[0] < cross.x + cross.size and
+                player_pos[0] + player_size > cross.x - cross.size and
+                player_pos[1] < cross.y + cross.size and
+                player_pos[1] + player_size > cross.y - cross.size):
+                # Крест не наносит урон, но замораживает игрока на 2 секунды (60 кадров)
+                cross.is_frozen = True
+                cross.freeze_timer = 60  # Заморозка на 2 секунды (60 кадров)
+                
+                # Отключаем управление игроком на 2 секунды
+                is_moving_left = False
+                is_moving_right = False
+                move_velocity = 0
+                
+                # Создаем визуальный эффект заморозки
+                cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                collision_sound.play()
+                
+                boss_3_crosses.remove(cross)
+                continue
+                
+            # Удаляем кресты, которые вышли за границы экрана
+            if (cross.x < -50 or cross.x > width + 50 or 
+                cross.y < -50 or cross.y > height + 50):
+                boss_3_crosses.remove(cross)
+                continue
+
+        # Обновление красных столбов босса 4
+        for column in boss_4_columns[:]:
+            column.move()
+            # Проверяем столкновение с игроком (только когда столб падает)
+            if column.state == "falling":
+                if (player_pos[0] < column.x + column.width and
+                    player_pos[0] + player_size > column.x and
+                    player_pos[1] < column.y + column.height and
+                    player_pos[1] + player_size > column.y):
+                    # Игрок получает урон (2 единицы)
+                    lives -= 2
+                    boss_4_columns.remove(column)
+                    cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                    collision_sound.play()
+                    if lives <= 0:
+                        game_over = True
+                    continue
+            
+            # Удаляем столбы, которые вышли за границы экрана
+            if (column.y > height + 50):
+                boss_4_columns.remove(column)
+                continue
+
         # Создание босса Снежный Мех если пришло его время и он не побеждён
         if boss_4_appear == 1 and boss_4_defeated == 0:
             if (boss_4_counter == 0):
@@ -1284,14 +2021,21 @@ while running:
                 bosses_4.append(list(boss_4_pos))
             else:
                 boss_4_counter = 1
-            # Обновление позиций босса
-            boss_4_appear = 1
+            # Обновление позиций босса (исправляем логику движения)
             for boss_4 in bosses_4:
-                if boss_4_appear == 1:
+                # Босс движется влево до позиции 580, затем останавливается и остается на экране
+                if boss_4[0] > 580:
                     boss_4[0] -= boss_4_speed
-                if (boss_4_appear == 1) and (boss_4[0] < 580):
-                    boss_4_appear = 0
-        
+                    
+                # Логика стрельбы красными столбами (теперь работает всегда когда босс на экране)
+                boss_4_column_timer += 1
+                if boss_4_column_timer >= boss_4_column_cooldown:
+                    # Создаем красный столб, который поднимается из босса
+                    column_x = boss_4[0] + 128  # Центр босса по X
+                    column_y = boss_4[1]  # Верхняя часть босса
+                    column = Boss4Column(column_x, column_y, player_pos[0] + player_size/2)
+                    boss_4_columns.append(column)
+                    boss_4_column_timer = 0
         # Создание босса Чужой Мех если пришло его время и он не побеждён
         if boss_5_appear == 1 and boss_5_defeated == 0:
             if (boss_5_counter == 0):
@@ -1303,13 +2047,54 @@ while running:
                 bosses_5.append(list(boss_5_pos))
             else:
                 boss_5_counter = 1
-            # Обновление позиций босса
-            boss_5_appear = 1
+            # Обновление позиций босса (исправляем логику движения)
             for boss_5 in bosses_5:
-                if boss_5_appear == 1:
+                # Босс движется влево до позиции 580, затем останавливается и остается на экране
+                if boss_5[0] > 580:
                     boss_5[0] -= boss_5_speed
-                if (boss_5_appear == 1) and (boss_5[0] < 580):
-                    boss_5_appear = 0
+                    
+                # Логика атак босса 5 - каждые 4 секунды случайно выбирает атаку одного из предыдущих боссов
+                boss_5_attack_timer += 1
+                
+                if boss_5_attack_timer >= 120:  # 4 секунды (120 кадров при 30 FPS)
+                    # Случайно выбираем атаку одного из предыдущих боссов (1-4)
+                    attack_type = random.randint(1, 4)
+                    
+                    if attack_type == 1:
+                        # Атака босса 1 - огненные шары
+                        fireball = Fireball(boss_5[0] + 128, boss_5[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                        boss_1_fireballs.append(fireball)
+                    elif attack_type == 2:
+                        # Атака босса 2 - зеленые бомбы
+                        # Создаем три зеленых бомбы с разными стартовыми позициями и целями для четкого разделения
+                        bomb_left = GreenBomb(boss_5[0] + 100, boss_5[1] + 128, player_pos[0] + player_size/2 - 30, player_pos[1] + player_size/2)
+                        boss_2_bombs.append(bomb_left)
+                        
+                        bomb_center = GreenBomb(boss_5[0] + 128, boss_5[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                        boss_2_bombs.append(bomb_center)
+                        
+                        bomb_right = GreenBomb(boss_5[0] + 156, boss_5[1] + 128, player_pos[0] + player_size/2 + 30, player_pos[1] + player_size/2)
+                        boss_2_bombs.append(bomb_right)
+                    elif attack_type == 3:
+                        # Атака босса 3 - лазеры и самонаводящиеся кресты
+                        # 70% шанс на лазер, 30% шанс на крест
+                        if random.randint(1, 10) <= 7:
+                            # Создаем лазер, направленный на игрока
+                            laser = Boss3Laser(boss_5[0] + 128, boss_5[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                            boss_3_lasers.append(laser)
+                        else:
+                            # Создаем самонаводящийся крест
+                            cross = Boss3HomingCross(boss_5[0] + 128, boss_5[1] + 128, player_pos[0] + player_size/2, player_pos[1] + player_size/2)
+                            boss_3_crosses.append(cross)
+                    elif attack_type == 4:
+                        # Атака босса 4 - красные столбы
+                        column_x = boss_5[0] + 128  # Центр босса по X
+                        column_y = boss_5[1]  # Верхняя часть босса
+                        column = Boss4Column(column_x, column_y, player_pos[0] + player_size/2)
+                        boss_4_columns.append(column)
+                    
+                    # Сброс таймера
+                    boss_5_attack_timer = 0
         # ---------------------- конец блока босса -----------------
 
         # Создание допэнергии с заданной частотой
@@ -1410,10 +2195,11 @@ while running:
         else:
             tank_counter -= 1
         # Обновление позиций танков и удаление вышедших за границу экрана
-        for tank in tanks:
+        for tank in tanks[:]:  # Используем копию списка для итерации
             tank[0] -= tank_speed
             if tank[0] + tank_max_size < 0:
-                tanks.remove(tank)
+                if tank in tanks:  # Проверяем, что танк еще в списке
+                    tanks.remove(tank)
                 if score > 1:
                     score -= 1
                     
@@ -1430,7 +2216,8 @@ while running:
                     collision_sound.play()
                     is_jumping = True
                     jump_velocity = 10
-                    tanks.remove(tank)
+                    if tank in tanks:  # Проверяем, что танк еще в списке
+                        tanks.remove(tank)
                     player_state = 3
 
         # Создание препятствий с заданной частотой
@@ -1445,14 +2232,15 @@ while running:
             obstacle_counter -= 1+(score-second_chance)
 
         # Обновление позиций препятствий и удаление вышедших за границу экрана
-        for obstacle in obstacles:
+        for obstacle in obstacles[:]:  # Используем копию списка для итерации
             prev_ob = obstacle[1]
             obstacle[0] -= (obstacle_speed - 1)
 
             if obstacle[0] + obstacle_max_size < 0:
                 ocparticles = [ocParticle(obstacle_pos[0] - width, prev_ob) for _ in range(ocparticle_count)]
                 new_score_sound.play()
-                obstacles.remove(obstacle)
+                if obstacle in obstacles:  # Проверяем, что препятствие еще в списке
+                    obstacles.remove(obstacle)
                 score += 1
                 score_show = score
                 # Каждые 10 очков даём жизнь
@@ -1538,14 +2326,14 @@ while running:
                         else:
                             winner = 0
                             
+                    # Reset boss states when game is over
                     boss_1_appear, boss_1_counter, boss_1_defeated = 0, 0, 0
                     boss_2_appear, boss_2_counter, boss_2_defeated = 0, 0, 0
                     boss_3_appear, boss_3_counter, boss_3_defeated = 0, 0, 0
                     boss_4_appear, boss_4_counter, boss_4_defeated = 0, 0, 0
                     boss_5_appear, boss_5_counter, boss_5_defeated = 0, 0, 0
                     break
-        
-        # Проверка столкновения игрока с препятствием
+            # Проверка столкновения игрока с препятствием
             if check_collision(player_pos, obstacle):
                 if g_shield == 1 and g_shield_switch == 0: lives -= 1
                 if g_shield == 0: lives -= 1
@@ -1565,7 +2353,33 @@ while running:
                     collision_sound.play()
                     is_jumping = True
                     jump_velocity = 10
-                    obstacles.remove(obstacle)
+                    if obstacle in obstacles:  # Проверяем, что препятствие еще в списке
+                        obstacles.remove(obstacle)
+                    player_state = 3
+            
+        # Проверка столкновения игрока с танками
+        for tank in tanks[:]:  # Используем копию списка для итерации
+            if check_collision_tank(player_pos, tank):
+                if g_shield == 1 and g_shield_switch == 0: lives -= 1
+                if g_shield == 0: lives -= 1
+                if lives == 0:
+                    cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                    collision_sound.play()
+                    game_over = True
+                    # Reset boss states when game is over
+                    boss_1_appear, boss_1_counter, boss_1_defeated = 0, 0, 0
+                    boss_2_appear, boss_2_counter, boss_2_defeated = 0, 0, 0
+                    boss_3_appear, boss_3_counter, boss_3_defeated = 0, 0, 0
+                    boss_4_appear, boss_4_counter, boss_4_defeated = 0, 0, 0
+                    boss_5_appear, boss_5_counter, boss_5_defeated = 0, 0, 0
+                    break
+                else:
+                    cparticles = [cParticle(player_pos[0]+16, player_pos[1]-16) for _ in range(cparticle_count)]
+                    collision_sound.play()
+                    is_jumping = True
+                    jump_velocity = 10
+                    if tank in tanks:  # Проверяем, что танк еще в списке
+                        tanks.remove(tank)
                     player_state = 3
             
         # Обновление позиций фоновых блоков для прокрутки
@@ -1792,6 +2606,8 @@ while running:
                         screen.blit(boss_1_4_alpha_img, boss_1)
                     else:
                         screen.blit(boss_1_2_alpha_img, boss_1)
+                # Отрисовка полоски здоровья босса 1
+                draw_boss_health_bar(boss_1[0], boss_1[1] - 20, boss_1_life, 30)
 
         # Отрисовка босса Болотный Мех
         for boss_2 in bosses_2:
@@ -1805,6 +2621,8 @@ while running:
                     screen.blit(boss_2_4_alpha_img, boss_2)
                 else:
                     screen.blit(boss_2_2_alpha_img, boss_2)
+            # Отрисовка полоски здоровья босса 2
+            draw_boss_health_bar(boss_2[0], boss_2[1] - 20, boss_2_life, 34)
         
         # Отрисовка босса Белый Птиц
         for boss_3 in bosses_3:
@@ -1818,6 +2636,8 @@ while running:
                     screen.blit(boss_3_4_alpha_img, boss_3)
                 else:
                     screen.blit(boss_3_2_alpha_img, boss_3)
+            # Отрисовка полоски здоровья босса 3
+            draw_boss_health_bar(boss_3[0], boss_3[1] - 20, boss_3_life, 38)
         
         # Отрисовка босса Снежный Мех
         for boss_4 in bosses_4:
@@ -1831,6 +2651,8 @@ while running:
                     screen.blit(boss_4_4_alpha_img, boss_4)
                 else:
                     screen.blit(boss_4_2_alpha_img, boss_4)
+            # Отрисовка полоски здоровья босса 4
+            draw_boss_health_bar(boss_4[0], boss_4[1] - 20, boss_4_life, 44)
         
         
 
@@ -1854,6 +2676,28 @@ while running:
                     screen.blit(boss_5_4_alpha_img, boss_5)
                 else:
                     screen.blit(boss_5_2_alpha_img, boss_5)
+            # Отрисовка полоски здоровья босса 5
+            draw_boss_health_bar(boss_5[0], boss_5[1] - 20, boss_5_life, 48)
+        
+        # Отрисовка огненных шаров босса 1
+        for fireball in boss_1_fireballs:
+            fireball.draw(screen)
+            
+        # Отрисовка зеленых бомб босса 2
+        for bomb in boss_2_bombs:
+            bomb.draw(screen)
+
+        # Отрисовка лазеров босса 3
+        for laser in boss_3_lasers:
+            laser.draw(screen)
+            
+        # Отрисовка самонаводящихся крестов босса 3
+        for cross in boss_3_crosses:
+            cross.draw(screen)
+            
+        # Отрисовка красных столбов босса 4
+        for column in boss_4_columns:
+            column.draw(screen)
         #=========================== Частицы на первом плане =========================
         for cparticle in cparticles:
             cparticle.move()
@@ -1862,6 +2706,8 @@ while running:
         for ocparticle in ocparticles:
             ocparticle.move()
             ocparticle.draw(screen)
+        #=============================================================================
+
         #=============================================================================
 
         if shield_ready == 1:
@@ -1918,66 +2764,76 @@ while running:
         
         if tiktak == 16 and winner !=1:
             if boss_1_defeated == 0 and stage == 1 and not game_over:
-                if boss_1_life < 1:
-                    boss_1_1_alpha_img, new_alpha = decrease_alpha(boss_1_1_alpha_img)
-                    boss_1_2_alpha_img, new_alpha = decrease_alpha(boss_1_2_alpha_img)
-                    boss_1_3_alpha_img, new_alpha = decrease_alpha(boss_1_3_alpha_img)
-                    boss_1_4_alpha_img, new_alpha = decrease_alpha(boss_1_4_alpha_img)
-                    if (new_alpha < 60):
-                        boss_1_defeated = 1
-                    if boss_1_defeated == 1:
-                        cparticles = [cParticle(boss_1_pos[0]-128, boss_1_pos[1]+128) for _ in range(cparticle_count)]
-                        boss_death_sound.play()
-                        bosses_1.remove(boss_1)
+                for boss_1 in bosses_1[:]:  # Используем копию списка для итерации
+                    if boss_1_life < 1:
+                        boss_1_1_alpha_img, new_alpha = decrease_alpha(boss_1_1_alpha_img)
+                        boss_1_2_alpha_img, new_alpha = decrease_alpha(boss_1_2_alpha_img)
+                        boss_1_3_alpha_img, new_alpha = decrease_alpha(boss_1_3_alpha_img)
+                        boss_1_4_alpha_img, new_alpha = decrease_alpha(boss_1_4_alpha_img)
+                        if (new_alpha < 60):
+                            boss_1_defeated = 1
+                        if boss_1_defeated == 1:
+                            cparticles = [cParticle(boss_1_pos[0]-128, boss_1_pos[1]+128) for _ in range(cparticle_count)]
+                            boss_death_sound.play()
+                            if boss_1 in bosses_1:  # Проверяем, что босс еще в списке
+                                bosses_1.remove(boss_1)
 
             if boss_2_defeated == 0 and stage == 2 and not game_over:
-                if boss_2_life < 1:
-                    boss_2_1_alpha_img, new_alpha = decrease_alpha(boss_2_1_alpha_img)
-                    boss_2_2_alpha_img, new_alpha = decrease_alpha(boss_2_2_alpha_img)
-                    boss_2_3_alpha_img, new_alpha = decrease_alpha(boss_2_3_alpha_img)
-                    boss_2_4_alpha_img, new_alpha = decrease_alpha(boss_2_4_alpha_img)
-                    if (new_alpha < 60):
-                        boss_2_defeated = 1
-                    if boss_2_defeated == 1:
-                        cparticles = [cParticle(boss_2_pos[0]-128, boss_2_pos[1]+128) for _ in range(cparticle_count)]
-                        boss_death_sound.play()
-                        bosses_2.remove(boss_2)
+                for boss_2 in bosses_2[:]:  # Используем копию списка для итерации
+                    if boss_2_life < 1:
+                        boss_2_1_alpha_img, new_alpha = decrease_alpha(boss_2_1_alpha_img)
+                        boss_2_2_alpha_img, new_alpha = decrease_alpha(boss_2_2_alpha_img)
+                        boss_2_3_alpha_img, new_alpha = decrease_alpha(boss_2_3_alpha_img)
+                        boss_2_4_alpha_img, new_alpha = decrease_alpha(boss_2_4_alpha_img)
+                        if (new_alpha < 60):
+                            boss_2_defeated = 1
+                        if boss_2_defeated == 1:
+                            cparticles = [cParticle(boss_2_pos[0]-128, boss_2_pos[1]+128) for _ in range(cparticle_count)]
+                            boss_death_sound.play()
+                            if boss_2 in bosses_2:  # Проверяем, что босс еще в списке
+                                bosses_2.remove(boss_2)
             if boss_3_defeated == 0 and stage == 3 and not game_over:
-                if boss_3_life < 1:
-                    boss_3_1_alpha_img, new_alpha = decrease_alpha(boss_3_1_alpha_img)
-                    boss_3_2_alpha_img, new_alpha = decrease_alpha(boss_3_2_alpha_img)
-                    boss_3_3_alpha_img, new_alpha = decrease_alpha(boss_3_3_alpha_img)
-                    boss_3_4_alpha_img, new_alpha = decrease_alpha(boss_3_4_alpha_img)
-                    if (new_alpha < 60):
-                        boss_3_defeated = 1
-                    if boss_3_defeated == 1:
-                        cparticles = [cParticle(boss_3_pos[0]-128, boss_3_pos[1]+128) for _ in range(cparticle_count)]
-                        boss_death_sound.play()
-                        bosses_3.remove(boss_3)
+                for boss_3 in bosses_3[:]:  # Используем копию списка для итерации
+                    if boss_3_life < 1:
+                        boss_3_1_alpha_img, new_alpha = decrease_alpha(boss_3_1_alpha_img)
+                        boss_3_2_alpha_img, new_alpha = decrease_alpha(boss_3_2_alpha_img)
+                        boss_3_3_alpha_img, new_alpha = decrease_alpha(boss_3_3_alpha_img)
+                        boss_3_4_alpha_img, new_alpha = decrease_alpha(boss_3_4_alpha_img)
+                        if (new_alpha < 60):
+                            boss_3_defeated = 1
+                        if boss_3_defeated == 1:
+                            cparticles = [cParticle(boss_3_pos[0]-128, boss_3_pos[1]+128) for _ in range(cparticle_count)]
+                            boss_death_sound.play()
+                            if boss_3 in bosses_3:  # Проверяем, что босс еще в списке
+                                bosses_3.remove(boss_3)
             if boss_4_defeated == 0 and stage == 4 and not game_over:
-                if boss_4_life < 1:
-                    boss_4_1_alpha_img, new_alpha = decrease_alpha(boss_4_1_alpha_img)
-                    boss_4_2_alpha_img, new_alpha = decrease_alpha(boss_4_2_alpha_img)
-                    boss_4_3_alpha_img, new_alpha = decrease_alpha(boss_4_3_alpha_img)
-                    boss_4_4_alpha_img, new_alpha = decrease_alpha(boss_4_4_alpha_img)
-                    if (new_alpha < 60):
-                        boss_4_defeated = 1
-                    if boss_4_defeated == 1:
-                        cparticles = [cParticle(boss_4_pos[0]-128, boss_4_pos[1]+128) for _ in range(cparticle_count)]
-                        boss_death_sound.play()
-                        bosses_4.remove(boss_4)
+                for boss_4 in bosses_4[:]:  # Используем копию списка для итерации
+                    if boss_4_life < 1:
+                        boss_4_1_alpha_img, new_alpha = decrease_alpha(boss_4_1_alpha_img)
+                        boss_4_2_alpha_img, new_alpha = decrease_alpha(boss_4_2_alpha_img)
+                        boss_4_3_alpha_img, new_alpha = decrease_alpha(boss_4_3_alpha_img)
+                        boss_4_4_alpha_img, new_alpha = decrease_alpha(boss_4_4_alpha_img)
+                        if (new_alpha < 60):
+                            boss_4_defeated = 1
+                        if boss_4_defeated == 1:
+                            cparticles = [cParticle(boss_4_pos[0]-128, boss_4_pos[1]+128) for _ in range(cparticle_count)]
+                            boss_death_sound.play()
+                            if boss_4 in bosses_4:  # Проверяем, что босс еще в списке
+                                bosses_4.remove(boss_4)
             if boss_5_defeated == 0 and stage == 5 and not game_over:
-                if boss_5_life < 1:
-                    boss_5_1_alpha_img, new_alpha = decrease_alpha(boss_5_1_alpha_img)
-                    boss_5_2_alpha_img, new_alpha = decrease_alpha(boss_5_2_alpha_img)
-                    boss_5_3_alpha_img, new_alpha = decrease_alpha(boss_5_3_alpha_img)
-                    boss_5_4_alpha_img, new_alpha = decrease_alpha(boss_5_4_alpha_img)
-                    if (new_alpha < 60):
-                        boss_5_defeated = 1
-                    if boss_5_defeated == 1:
-                        cparticles = [cParticle(boss_5_pos[0]-128, boss_5_pos[1]+128) for _ in range(cparticle_count)]
-                        boss_death_sound.play()
-                        bosses_5.remove(boss_5)
+                for boss_5 in bosses_5[:]:  # Используем копию списка для итерации
+                    if boss_5_life < 1:
+                        boss_5_1_alpha_img, new_alpha = decrease_alpha(boss_5_1_alpha_img)
+                        boss_5_2_alpha_img, new_alpha = decrease_alpha(boss_5_2_alpha_img)
+                        boss_5_3_alpha_img, new_alpha = decrease_alpha(boss_5_3_alpha_img)
+                        boss_5_4_alpha_img, new_alpha = decrease_alpha(boss_5_4_alpha_img)
+                        if (new_alpha < 60):
+                            boss_5_defeated = 1
+                        if boss_5_defeated == 1:
+                            cparticles = [cParticle(boss_5_pos[0]-128, boss_5_pos[1]+128) for _ in range(cparticle_count)]
+                            boss_death_sound.play()
+                            if boss_5 in bosses_5:  # Проверяем, что босс еще в списке
+                                bosses_5.remove(boss_5)
 
         # Смена спрайтов по таймеру каждые 10, 20 и 30 кадров
         if tiktak == 10 or tiktak == 20 or tiktak == 30:
@@ -2026,7 +2882,7 @@ while running:
         # Отображение текстовых сообщений при окончании игры
         if game_over:
             bosses_1.clear(), bosses_2.clear(), bosses_3.clear(), bosses_4.clear(), bosses_5.clear()
-            is_moving_right = False
+            boss_1_fireballs.clear(), boss_2_bombs.clear(), boss_3_lasers.clear(), boss_3_crosses.clear(), boss_4_columns.clear()
             is_moving_left = False
             score_show = score
             second_chance = 0
