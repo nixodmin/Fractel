@@ -1,4 +1,4 @@
-# Fractel
+# Fractel v1.0.7
 
 ![screen](https://github.com/user-attachments/assets/79bad538-e187-4df7-be7e-87c6c69d105b)
 
@@ -12,7 +12,7 @@ RU:
 При столкновении с верхней границей экрана ранец отключается, игрок падает вниз с большой скоростью.
 Нажатие LEFT CONTROL позволяет отключать ранец и падать быстре в произвольный момент.
 
-В новом релизе появились баффы на оружие и щит!
+В новом релизе появились боссы могут вас атаковать! Уровень хардкорности повышен!
 
 Бафф на щит (пассивка) даёт восполняемый каждые 20 секунд щит, который выдерживает 1 столкновение.
 
@@ -77,7 +77,7 @@ The player, by pressing SPACE, can activate the jetpack and jump in the air.
 When colliding with the upper edge of the screen, the jetpack turns off, the player falls down at high speed.
 Pressing LEFT CONTROL allows you to turn off the jetpack and fall faster at any time.
 
-The new release features weapon and shield buffs!
+The new release features boss attacks! Game gets it hardcore!
 
 Shield buff (passive) gives a shield that replenishes every 20 seconds and can withstand 1 collision.
 
